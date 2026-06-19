@@ -38,7 +38,7 @@
     </div>
 
     <div v-if="tab === 'settlements'" class="px-4">
-      <SettlementCard v-for="s in settlements" :key="s.id" :settlement="s" @mark-paid="handleMarkPaid" />
+      <SettlementCard v-for="s in settlements" :key="s.id" :settlement="s" @mark-paid="handleMarkPaid" @remind="handleRemind" />
       <div v-if="settlements.length === 0" class="text-center text-gray-400 py-12 text-sm">All settled!</div>
     </div>
 
@@ -69,6 +69,7 @@ import { formatAmount } from '../utils/format'
 import ExpenseItem from '../components/ExpenseItem.vue'
 import BalanceBar from '../components/BalanceBar.vue'
 import SettlementCard from '../components/SettlementCard.vue'
+import client from '../api/client'
 
 const route = useRoute()
 const store = useGroupsStore()
@@ -95,6 +96,15 @@ const maxAbsBalance = computed(() =>
 async function handleMarkPaid(settlementId) {
   await updateSettlement(settlementId, { is_settled: true })
   settlements.value = await fetchSettlements(groupId)
+}
+
+async function handleRemind(settlement) {
+  try {
+    await client.post(`/api/settlements/${settlement.id}/remind`)
+    alert('Reminder sent!')
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Failed to send reminder')
+  }
 }
 
 onMounted(async () => {

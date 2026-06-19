@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.schemas.settlement import BalanceOut, SettlementOut, SettlementUpdate
 from app.services.settlement_calculator import calculate_balances, minimize_settlements
+from app.services.telegram_bot import send_settle_reminder
 
 router = APIRouter(tags=["settlements"])
 
@@ -151,6 +152,42 @@ async def update_settlement(
         settled_at=settlement.settled_at,
         confirmed_by_to=settlement.confirmed_by_to,
     )
+
+
+@router.post("/api/settlements/{settlement_id}/remind")
+async def remind_settlement(
+    settlement_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    settlement = await db.get(Settlement, settlement_id)
+    if settlement is None:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+
+    await _verify_membership(settlement.group_id, user.id, db)
+
+    # Get debtor's telegram_id
+    from_member = await db.get(GroupMember, settlement.from_member_id)
+    if from_member.user_id is None:
+        raise HTTPException(status_code=400, detail="Member has no Telegram account")
+
+    debtor_user = await db.get(User, from_member.user_id)
+    to_member = await db.get(GroupMember, settlement.to_member_id)
+    group = await db.get(Group, settlement.group_id)
+
+    sent = await send_settle_reminder(
+        debtor_telegram_id=debtor_user.telegram_id,
+        debtor_name=from_member.display_name,
+        creditor_name=to_member.display_name,
+        amount=str(settlement.amount),
+        currency=settlement.currency,
+        group_name=group.name,
+    )
+
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to send notification")
+
+    return {"status": "sent"}
 
 
 async def _verify_membership(group_id: int, user_id: int, db: AsyncSession):
