@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
 from app.api.currencies import router as currencies_router
@@ -30,3 +33,9 @@ app.include_router(currencies_router)
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+# Serve frontend in production
+frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
