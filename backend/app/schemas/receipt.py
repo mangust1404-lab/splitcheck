@@ -15,4 +15,5 @@ class ReceiptScanResponse(BaseModel):
     tax: Decimal | None = None
     tips: Decimal | None = None
     currency: str | None = None
+    image_url: str | None = None
     raw_text: str | None = None
