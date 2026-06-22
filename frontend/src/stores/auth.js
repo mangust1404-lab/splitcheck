@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { loginWithTelegram, getMe } from '../api/auth'
+import { loginWithTelegram, loginDev, getMe } from '../api/auth'
 import { useTelegram } from '../composables/useTelegram'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -14,12 +14,13 @@ export const useAuthStore = defineStore('auth', () => {
       const { getInitData } = useTelegram()
       const initData = getInitData()
 
+      let result
       if (!initData) {
-        console.warn('No Telegram initData — running outside Telegram')
-        return false
+        console.warn('No Telegram initData — trying dev auth')
+        result = await loginDev()
+      } else {
+        result = await loginWithTelegram(initData)
       }
-
-      const result = await loginWithTelegram(initData)
       localStorage.setItem('access_token', result.access_token)
       user.value = { id: result.user_id, display_name: result.display_name }
       isLoggedIn.value = true

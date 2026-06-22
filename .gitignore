@@ -20,5 +20,8 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Database
+*.db
+
 # Superpowers
 .superpowers/

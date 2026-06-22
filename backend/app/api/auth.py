@@ -49,6 +49,38 @@ async def telegram_auth(body: AuthRequest, db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.post("/dev", response_model=AuthResponse)
+async def dev_auth(db: AsyncSession = Depends(get_db)):
+    """Dev-only auth bypass. Only works when BOT_TOKEN is not set."""
+    from app.config import settings as _settings
+
+    if _settings.bot_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Dev auth disabled in production",
+        )
+
+    telegram_id = 999999999
+    display_name = "Dev User"
+
+    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        user = User(
+            telegram_id=telegram_id,
+            display_name=display_name,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    token = create_access_token(user.id)
+    return AuthResponse(
+        access_token=token, user_id=user.id, display_name=user.display_name
+    )
+
+
 @router.get("/me", response_model=UserOut)
 async def get_me(user: User = Depends(get_current_user)):
     return user

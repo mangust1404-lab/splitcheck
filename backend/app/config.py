@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://splitcheck:splitcheck_dev@localhost:5432/splitcheck"
+    database_url: str = "sqlite+aiosqlite:///./splitcheck.db"
     bot_token: str = ""
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
