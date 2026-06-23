@@ -31,20 +31,20 @@
     </div>
 
     <div v-if="settlement.is_settled && settlement.confirmed_by_to" class="text-center text-xs text-emerald-600 font-medium">
-      Paid and confirmed
+      {{ t('settlementCard.paidConfirmed') }}
     </div>
     <div v-else class="flex gap-2">
       <button
         @click="$emit('markPaid', settlement.id)"
         class="flex-1 py-2 rounded-lg text-xs font-semibold bg-emerald-500 text-white"
       >
-        {{ settlement.is_settled ? 'Paid' : 'Mark Paid' }}
+        {{ settlement.is_settled ? t('settlementCard.paid') : t('settlementCard.markPaid') }}
       </button>
       <button
         @click="$emit('remind', settlement)"
         class="flex-1 bg-gray-100 py-2 rounded-lg text-xs text-gray-600 font-semibold"
       >
-        Remind
+        {{ t('settlementCard.remind') }}
       </button>
     </div>
   </div>
@@ -53,6 +53,9 @@
 <script setup>
 import { computed } from 'vue'
 import { formatAmount } from '../utils/format'
+import { useI18n } from '../composables/useI18n'
+
+const { t } = useI18n()
 
 const props = defineProps({ settlement: Object })
 defineEmits(['markPaid', 'remind'])

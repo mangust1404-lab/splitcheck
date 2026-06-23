@@ -1,28 +1,28 @@
 <template>
   <div class="min-h-screen px-4 pt-4 pb-24">
     <div v-if="!scannedItems.length && !scanning">
-      <h1 class="text-xl font-bold mb-4">Scan Receipt</h1>
+      <h1 class="text-xl font-bold mb-4">{{ t('scanReceipt.title') }}</h1>
       <div
         class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer active:bg-gray-50"
         @click="$refs.fileInput.click()"
       >
         <div class="text-4xl mb-2">📷</div>
-        <div class="text-gray-500 text-sm">Tap to take a photo or choose from gallery</div>
+        <div class="text-gray-500 text-sm">{{ t('scanReceipt.tapToScan') }}</div>
       </div>
       <input ref="fileInput" type="file" accept="image/*" capture="environment" class="hidden" @change="handleFile" />
     </div>
 
     <div v-if="scanning" class="text-center py-16">
       <div class="text-3xl mb-3">🔍</div>
-      <div class="text-gray-500 text-sm">Scanning receipt...</div>
+      <div class="text-gray-500 text-sm">{{ t('scanReceipt.scanning') }}</div>
     </div>
 
     <div v-if="scannedItems.length && !scanning">
       <div class="mb-3">
-        <input v-model="expenseTitle" type="text" placeholder="Expense title"
+        <input v-model="expenseTitle" type="text" :placeholder="t('scanReceipt.expensePlaceholder')"
           class="w-full font-semibold text-base border-0 border-b border-gray-200 pb-1 outline-none" />
         <div class="flex justify-between items-center mt-1">
-          <div class="text-gray-500 text-[11px]">Paid by:</div>
+          <div class="text-gray-500 text-[11px]">{{ t('scanReceipt.paidBy') }}</div>
           <select v-model="paidById" class="text-xs border border-gray-300 rounded px-2 py-1 outline-none">
             <option v-for="m in members" :key="m.id" :value="m.id">{{ m.display_name }}</option>
           </select>
@@ -44,8 +44,8 @@
           <div class="bg-emerald-500 h-full rounded-full transition-all" :style="{ width: assignedPercent + '%' }" />
         </div>
         <div class="flex justify-between text-[11px] text-gray-500 mt-1">
-          <span>Assigned: {{ formatAmount(assignedTotal, currency) }}</span>
-          <span>Remaining: {{ formatAmount(remainingTotal, currency) }}</span>
+          <span>{{ t('scanReceipt.assigned') }} {{ formatAmount(assignedTotal, currency) }}</span>
+          <span>{{ t('scanReceipt.remaining') }} {{ formatAmount(remainingTotal, currency) }}</span>
         </div>
       </div>
 
@@ -63,7 +63,7 @@
         :disabled="saving"
         class="w-full mt-4 bg-primary text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50"
       >
-        {{ saving ? 'Saving...' : 'Save Expense' }}
+        {{ saving ? t('scanReceipt.saving') : t('scanReceipt.save') }}
       </button>
     </div>
 
@@ -84,6 +84,7 @@ import { useGroupsStore } from '../stores/groups'
 import { scanReceipt } from '../api/receipts'
 import { createExpense } from '../api/expenses'
 import { formatAmount } from '../utils/format'
+import { useI18n } from '../composables/useI18n'
 import ReceiptItemRow from '../components/ReceiptItemRow.vue'
 import ParticipantPicker from '../components/ParticipantPicker.vue'
 import ParticipantBar from '../components/ParticipantBar.vue'
@@ -91,6 +92,7 @@ import ParticipantBar from '../components/ParticipantBar.vue'
 const route = useRoute()
 const router = useRouter()
 const store = useGroupsStore()
+const { t } = useI18n()
 const groupId = Number(route.params.id)
 
 const members = computed(() => store.currentGroup?.members || [])
@@ -133,7 +135,7 @@ async function handleFile(event) {
   try {
     const result = await scanReceipt(file)
     scannedItems.value = result.items
-    expenseTitle.value = 'Scanned receipt'
+    expenseTitle.value = t('scanReceipt.defaultTitle')
     result.items.forEach((_, i) => { assignments[i] = [] })
   } finally {
     scanning.value = false

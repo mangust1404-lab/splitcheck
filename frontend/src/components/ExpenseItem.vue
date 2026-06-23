@@ -4,7 +4,7 @@
       <div>
         <div class="font-semibold text-sm">{{ expense.title }}</div>
         <div class="text-gray-500 text-[11px] mt-0.5">
-          {{ paidByName }} paid · {{ expense.split_type }}
+          {{ t('expenseItem.paid', { name: paidByName, splitType: expense.split_type }) }}
         </div>
       </div>
       <div class="font-semibold text-sm">
@@ -17,6 +17,9 @@
 <script setup>
 import { computed } from 'vue'
 import { formatAmount } from '../utils/format'
+import { useI18n } from '../composables/useI18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   expense: Object,

@@ -1,21 +1,21 @@
 <template>
   <div class="min-h-screen px-4 pt-4">
-    <h1 class="text-xl font-bold mb-6">New Trip</h1>
+    <h1 class="text-xl font-bold mb-6">{{ t('createGroup.title') }}</h1>
 
     <form @submit.prevent="submit" class="space-y-5">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Trip name</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('createGroup.tripName') }}</label>
         <input
           v-model="name"
           type="text"
-          placeholder="e.g. Bali with friends"
+          :placeholder="t('createGroup.tripPlaceholder')"
           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
           required
         />
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Base currency</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('createGroup.baseCurrency') }}</label>
         <select
           v-model="currency"
           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none"
@@ -27,13 +27,13 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Participants</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('createGroup.participants') }}</label>
         <div class="space-y-2">
           <div v-for="(member, i) in members" :key="i" class="flex items-center gap-2">
             <input
               v-model="members[i]"
               type="text"
-              :placeholder="`Participant ${i + 1}`"
+              :placeholder="t('createGroup.participantN', { n: i + 1 })"
               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
             />
             <button
@@ -45,7 +45,7 @@
           </div>
         </div>
         <button type="button" @click="members.push('')" class="mt-2 text-primary text-sm font-medium">
-          + Add participant
+          {{ t('createGroup.addParticipant') }}
         </button>
       </div>
 
@@ -54,7 +54,7 @@
         :disabled="saving"
         class="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50"
       >
-        {{ saving ? 'Creating...' : 'Create Trip' }}
+        {{ saving ? t('createGroup.creating') : t('createGroup.create') }}
       </button>
     </form>
   </div>
@@ -64,14 +64,18 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { createGroup, addMember } from '../api/groups'
+import { useAuthStore } from '../stores/auth'
 import { useCurrency } from '../composables/useCurrency'
+import { useI18n } from '../composables/useI18n'
 
 const router = useRouter()
+const auth = useAuthStore()
 const { CURRENCIES } = useCurrency()
+const { t } = useI18n()
 
 const name = ref('')
 const currency = ref('KZT')
-const members = ref([''])
+const members = ref([auth.user?.display_name || ''])
 const saving = ref(false)
 
 async function submit() {
