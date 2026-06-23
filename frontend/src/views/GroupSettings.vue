@@ -1,29 +1,39 @@
 <template>
   <div class="min-h-screen px-4 pt-4">
-    <h1 class="text-xl font-bold mb-4">Group Settings</h1>
+    <div class="flex items-center gap-2 mb-4">
+      <button
+        @click="$router.push({ name: 'trip-detail', params: { id: groupId } })"
+        class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold">{{ t('groupSettings.title') }}</h1>
+    </div>
 
     <div v-if="group" class="space-y-6">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Trip name</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('groupSettings.tripName') }}</label>
         <input v-model="groupName" type="text"
           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
           @blur="updateName" />
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Invite link</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('groupSettings.inviteLink') }}</label>
         <div class="flex items-center gap-2">
           <input :value="inviteUrl" readonly
             class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-gray-50 outline-none" />
           <button @click="copyInvite" class="bg-primary text-white px-4 py-2.5 rounded-lg text-sm font-semibold">
-            Copy
+            {{ t('groupSettings.copy') }}
           </button>
         </div>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
-          Participants ({{ group.members.length }})
+          {{ t('groupSettings.participants', { count: group.members.length }) }}
         </label>
         <div class="space-y-2">
           <div v-for="m in group.members" :key="m.id"
@@ -35,37 +45,43 @@
             <div class="flex-1">
               <div class="text-sm font-medium">{{ m.display_name }}</div>
               <div class="text-[11px] text-gray-400">
-                {{ m.user_id ? 'Telegram linked' : 'Virtual' }}
-                {{ m.role === 'admin' ? ' · Admin' : '' }}
+                {{ m.user_id ? t('groupSettings.telegramLinked') : t('groupSettings.virtual') }}
+                {{ m.role === 'admin' ? ' · ' + t('groupSettings.admin') : '' }}
               </div>
             </div>
           </div>
         </div>
 
         <div class="flex gap-2 mt-2">
-          <input v-model="newMemberName" type="text" placeholder="Add participant"
+          <input v-model="newMemberName" type="text" :placeholder="t('groupSettings.addPlaceholder')"
             class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" />
           <button @click="handleAddMember" :disabled="!newMemberName.trim()"
             class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
-            Add
+            {{ t('groupSettings.add') }}
           </button>
         </div>
       </div>
 
-      <div class="pt-4 border-t border-gray-200">
+      <div class="pt-4 border-t border-gray-200 space-y-3">
         <button
           v-if="group.status === 'active'"
           @click="handleArchive"
           class="w-full py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-600"
         >
-          Archive Trip
+          {{ t('groupSettings.archive') }}
         </button>
         <button
           v-else
           @click="handleUnarchive"
           class="w-full py-3 border border-primary rounded-xl text-sm font-semibold text-primary"
         >
-          Reactivate Trip
+          {{ t('groupSettings.reactivate') }}
+        </button>
+        <button
+          @click="handleDelete"
+          class="w-full py-3 border border-red-300 rounded-xl text-sm font-semibold text-red-500"
+        >
+          {{ t('groupSettings.delete') }}
         </button>
       </div>
     </div>
@@ -76,13 +92,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGroupsStore } from '../stores/groups'
-import { updateGroup, addMember } from '../api/groups'
+import { updateGroup, addMember, deleteGroup } from '../api/groups'
 import { useTelegram } from '../composables/useTelegram'
+import { useI18n } from '../composables/useI18n'
 
 const route = useRoute()
 const router = useRouter()
 const store = useGroupsStore()
 const { showAlert } = useTelegram()
+const { t } = useI18n()
 const groupId = Number(route.params.id)
 
 const group = computed(() => store.currentGroup)
@@ -95,12 +113,12 @@ function getInitials(name) { return name.split(' ').map(w => w[0]).join('').slic
 
 const inviteUrl = computed(() => {
   if (!group.value) return ''
-  return `https://t.me/SplitCheckBot?startapp=${group.value.invite_code}`
+  return `https://t.me/SplitCheckanalog_bot/app?startapp=join_${group.value.invite_code}`
 })
 
 function copyInvite() {
   navigator.clipboard.writeText(inviteUrl.value)
-  showAlert('Invite link copied!')
+  showAlert(t('groupSettings.inviteCopied'))
 }
 
 async function updateName() {
@@ -114,6 +132,16 @@ async function handleAddMember() {
   await addMember(groupId, newMemberName.value.trim())
   newMemberName.value = ''
   await store.loadGroup(groupId)
+}
+
+async function handleDelete() {
+  if (!confirm(t('groupSettings.deleteConfirm'))) return
+  try {
+    await deleteGroup(groupId)
+    router.push({ name: 'my-trips' })
+  } catch (e) {
+    showAlert(e.response?.data?.detail || t('groupSettings.deleteFailed'))
+  }
 }
 
 async function handleArchive() {

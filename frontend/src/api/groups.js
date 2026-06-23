@@ -20,12 +20,21 @@ export async function updateGroup(id, payload) {
   return data
 }
 
+export async function fetchGroupByInvite(inviteCode) {
+  const { data } = await client.get(`/groups/invite/${inviteCode}`)
+  return data
+}
+
 export async function joinGroup(id, inviteCode, linkToMemberId = null) {
   const { data } = await client.post(`/groups/${id}/join`, {
     invite_code: inviteCode,
     link_to_member_id: linkToMemberId,
   })
   return data
+}
+
+export async function deleteGroup(id) {
+  await client.delete(`/groups/${id}`)
 }
 
 export async function addMember(groupId, displayName) {

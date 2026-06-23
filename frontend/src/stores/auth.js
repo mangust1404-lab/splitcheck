@@ -16,7 +16,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       let result
       if (!initData) {
-        console.warn('No Telegram initData — trying dev auth')
         result = await loginDev()
       } else {
         result = await loginWithTelegram(initData)
@@ -39,6 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
       isLoggedIn.value = true
     } catch {
       isLoggedIn.value = false
+      localStorage.removeItem('access_token')
     }
   }
 
