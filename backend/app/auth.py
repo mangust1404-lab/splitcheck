@@ -1,28 +1,37 @@
 import hashlib
 import hmac
 import json
+import logging
 from datetime import datetime, timedelta, timezone
-from urllib.parse import parse_qs
+from urllib.parse import parse_qsl
 
 from jose import jwt
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def validate_telegram_init_data(init_data: str) -> dict | None:
     """Validate Telegram WebApp initData and return parsed user data.
     Returns None if validation fails.
     """
-    parsed = parse_qs(init_data)
-    if "hash" not in parsed:
+    # Use parse_qsl (treats + as space, consistent with Telegram's urlSafeDecode)
+    pairs = parse_qsl(init_data, keep_blank_values=True)
+    data = dict(pairs)
+
+    if "hash" not in data:
+        logger.warning("No hash in initData")
         return None
 
-    received_hash = parsed.pop("hash")[0]
+    received_hash = data.pop("hash")
+    # For HMAC validation: only 'hash' is excluded from data_check_string
+    # 'signature' is INCLUDED (it's excluded only for Ed25519 third-party validation)
 
-    data_check_parts = []
-    for key in sorted(parsed.keys()):
-        data_check_parts.append(f"{key}={parsed[key][0]}")
-    data_check_string = "\n".join(data_check_parts)
+    # Build data-check-string: sorted key=value pairs joined by \n
+    data_check_string = "\n".join(
+        f"{k}={v}" for k, v in sorted(data.items())
+    )
 
     secret_key = hmac.new(
         b"WebAppData", settings.bot_token.encode(), hashlib.sha256
@@ -32,12 +41,14 @@ def validate_telegram_init_data(init_data: str) -> dict | None:
     ).hexdigest()
 
     if not hmac.compare_digest(computed_hash, received_hash):
+        logger.warning("Telegram auth HMAC mismatch")
         return None
 
-    if "user" not in parsed:
+    if "user" not in data:
+        logger.warning("No user field in initData")
         return None
 
-    return json.loads(parsed["user"][0])
+    return json.loads(data["user"])
 
 
 def create_access_token(user_id: int) -> str:

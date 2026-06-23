@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,6 +10,7 @@ from app.deps import get_current_user
 from app.models import Group, GroupMember, User
 from app.schemas.group import (
     GroupCreate,
+    GroupInvitePreview,
     GroupOut,
     GroupUpdate,
     JoinRequest,
@@ -27,8 +28,13 @@ async def list_groups(
 ):
     result = await db.execute(
         select(Group)
-        .join(GroupMember, GroupMember.group_id == Group.id)
-        .where(GroupMember.user_id == user.id)
+        .outerjoin(GroupMember, GroupMember.group_id == Group.id)
+        .where(
+            or_(
+                GroupMember.user_id == user.id,
+                Group.created_by_id == user.id,
+            )
+        )
         .options(selectinload(Group.members))
         .distinct()
     )
@@ -47,21 +53,30 @@ async def create_group(
         created_by_id=user.id,
     )
     db.add(group)
-    await db.flush()
-
-    member = GroupMember(
-        group_id=group.id,
-        user_id=user.id,
-        display_name=user.display_name,
-        role="admin",
-    )
-    db.add(member)
     await db.commit()
 
     result = await db.execute(
         select(Group).where(Group.id == group.id).options(selectinload(Group.members))
     )
     return result.scalar_one()
+
+
+@router.get("/invite/{invite_code}", response_model=GroupInvitePreview)
+async def get_group_invite_preview(
+    invite_code: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Preview a group by invite code (auth required, membership NOT required)."""
+    result = await db.execute(
+        select(Group)
+        .where(Group.invite_code == invite_code)
+        .options(selectinload(Group.members))
+    )
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=404, detail="Invalid invite code")
+    return group
 
 
 @router.get("/{group_id}", response_model=GroupOut)
@@ -149,6 +164,22 @@ async def join_group(
     return member
 
 
+@router.delete("/{group_id}", status_code=204)
+async def delete_group(
+    group_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Group).where(Group.id == group_id, Group.created_by_id == user.id)
+    )
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found or not owner")
+    await db.delete(group)
+    await db.commit()
+
+
 @router.post("/{group_id}/members", response_model=MemberOut, status_code=201)
 async def add_virtual_member(
     group_id: int,
@@ -174,11 +205,17 @@ async def _get_group_for_user(
 ) -> Group:
     result = await db.execute(
         select(Group)
-        .join(GroupMember, GroupMember.group_id == Group.id)
-        .where(Group.id == group_id, GroupMember.user_id == user_id)
+        .outerjoin(GroupMember, GroupMember.group_id == Group.id)
+        .where(
+            Group.id == group_id,
+            or_(
+                GroupMember.user_id == user_id,
+                Group.created_by_id == user_id,
+            ),
+        )
         .options(selectinload(Group.members))
     )
-    group = result.scalar_one_or_none()
+    group = result.unique().scalar_one_or_none()
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
     return group

@@ -25,7 +25,9 @@ class Group(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    members: Mapped[list["GroupMember"]] = relationship(back_populates="group")
+    members: Mapped[list["GroupMember"]] = relationship(
+        back_populates="group", passive_deletes=True
+    )
 
 
 class GroupMember(Base):

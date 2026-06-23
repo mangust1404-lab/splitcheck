@@ -40,6 +40,15 @@ class GroupOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class GroupInvitePreview(BaseModel):
+    id: int
+    name: str
+    base_currency: str
+    members: list[MemberOut] = []
+
+    model_config = {"from_attributes": True}
+
+
 class JoinRequest(BaseModel):
     invite_code: str
     link_to_member_id: int | None = None  # optional: link to existing virtual member

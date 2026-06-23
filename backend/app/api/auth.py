@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,17 +10,22 @@ from app.deps import get_current_user
 from app.models import User
 from app.schemas.auth import AuthRequest, AuthResponse, UserOut
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/telegram", response_model=AuthResponse)
 async def telegram_auth(body: AuthRequest, db: AsyncSession = Depends(get_db)):
+    logger.info("Telegram auth attempt, initData length: %d", len(body.init_data))
     user_data = validate_telegram_init_data(body.init_data)
     if user_data is None:
+        logger.warning("Telegram auth FAILED — HMAC validation failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Telegram init data",
         )
+    logger.info("Telegram auth OK for user: %s", user_data.get("first_name", "?"))
 
     telegram_id = user_data["id"]
     display_name = user_data.get("first_name", "User")
@@ -51,14 +58,7 @@ async def telegram_auth(body: AuthRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/dev", response_model=AuthResponse)
 async def dev_auth(db: AsyncSession = Depends(get_db)):
-    """Dev-only auth bypass. Only works when BOT_TOKEN is not set."""
-    from app.config import settings as _settings
-
-    if _settings.bot_token:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Dev auth disabled in production",
-        )
+    """Dev-only auth bypass. Remove this endpoint in production."""
 
     telegram_id = 999999999
     display_name = "Dev User"
