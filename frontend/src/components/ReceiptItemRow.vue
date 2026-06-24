@@ -1,15 +1,29 @@
 <template>
   <div
     class="rounded-lg p-2.5 mb-1.5 cursor-pointer active:opacity-80 transition-colors"
-    :class="assignees.length > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'"
+    :class="rowClass"
     @click="$emit('tap', item.index)"
   >
-    <div class="flex justify-between items-center">
-      <div>
-        <div class="font-medium text-sm">{{ item.name }}</div>
-        <div v-if="item.quantity > 1" class="text-gray-500 text-[11px]">x {{ item.quantity }}</div>
+    <div class="flex items-center gap-2">
+      <!-- Checkbox for multi-select -->
+      <div
+        class="w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors"
+        :class="selected
+          ? 'bg-primary border-primary text-white'
+          : 'border-gray-300 bg-white'"
+      >
+        <svg v-if="selected" class="w-3 h-3" viewBox="0 0 12 12" fill="none">
+          <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
-      <div class="flex items-center gap-1.5">
+
+      <!-- Item name -->
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-sm truncate">{{ item.name }}</div>
+      </div>
+
+      <!-- Assigned member avatars -->
+      <div class="flex items-center gap-1.5 flex-shrink-0">
         <div class="flex -space-x-1">
           <div
             v-for="memberId in assignees"
@@ -39,6 +53,7 @@ const props = defineProps({
   assignees: { type: Array, default: () => [] },
   members: Array,
   currency: String,
+  selected: { type: Boolean, default: false },
 })
 defineEmits(['tap'])
 
@@ -52,4 +67,10 @@ function getMemberInitials(id) {
 }
 
 const itemTotal = computed(() => Number(props.item.price) * props.item.quantity)
+
+const rowClass = computed(() => {
+  if (props.selected) return 'bg-primary/10 border border-primary/40'
+  if (props.assignees.length > 0) return 'bg-emerald-50 border border-emerald-200'
+  return 'bg-amber-50 border border-amber-200'
+})
 </script>

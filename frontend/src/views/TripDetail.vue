@@ -45,7 +45,7 @@
     </div>
 
     <div v-if="tab === 'expenses'" class="px-4">
-      <ExpenseItem v-for="expense in expenses" :key="expense.id" :expense="expense" :members="group?.members || []" />
+      <ExpenseItem v-for="expense in expenses" :key="expense.id" :expense="expense" :members="group?.members || []" :base-currency="group?.base_currency" />
       <div v-if="expenses.length === 0" class="text-center text-gray-400 py-12 text-sm">{{ t('tripDetail.noExpenses') }}</div>
     </div>
 
@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGroupsStore } from '../stores/groups'
 import { fetchExpenses } from '../api/expenses'
@@ -117,7 +117,7 @@ const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 function memberColor(id) { return colors[id % colors.length] }
 
 const totalSpending = computed(() =>
-  expenses.value.reduce((sum, e) => sum + Number(e.total_amount), 0)
+  expenses.value.reduce((sum, e) => sum + Number(e.total_amount) * Number(e.exchange_rate), 0)
 )
 
 const maxAbsBalance = computed(() =>
@@ -125,13 +125,15 @@ const maxAbsBalance = computed(() =>
 )
 
 async function handleMarkPaid(settlementId) {
-  await updateSettlement(settlementId, { is_settled: true })
+  const current = settlements.value.find(s => s.id === settlementId)
+  const newStatus = current ? !current.is_settled : true
+  await updateSettlement(settlementId, { is_settled: newStatus })
   settlements.value = await fetchSettlements(groupId)
 }
 
 async function handleRemind(settlement) {
   try {
-    await client.post(`/api/settlements/${settlement.id}/remind`)
+    await client.post(`/settlements/${settlement.id}/remind`)
     alert(t('tripDetail.reminderSent'))
   } catch (e) {
     alert(e.response?.data?.detail || t('tripDetail.reminderFailed'))
@@ -151,10 +153,19 @@ function shareInvite() {
   })
 }
 
-onMounted(async () => {
+async function loadAllData() {
   await store.loadGroup(groupId)
   expenses.value = await fetchExpenses(groupId)
   balances.value = await fetchBalances(groupId)
   settlements.value = await fetchSettlements(groupId)
+}
+
+onMounted(loadAllData)
+
+// Refetch data when navigating back to this view (e.g. after adding expense)
+watch(() => route.fullPath, (newPath) => {
+  if (newPath === `/trip/${groupId}`) {
+    loadAllData()
+  }
 })
 </script>

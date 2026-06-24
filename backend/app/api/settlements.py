@@ -57,10 +57,10 @@ async def get_settlements(
 
     expenses_data = await _load_expenses_for_calculation(group_id, db)
     balances = calculate_balances(expenses_data)
-    optimal = minimize_settlements(balances)
 
     members = await _load_members(group_id, db)
     member_names = {m.id: m.display_name for m in members}
+    member_has_telegram = {m.id: m.user_id is not None for m in members}
 
     group = await db.get(Group, group_id)
 
@@ -79,7 +79,15 @@ async def get_settlements(
     )
     settled = result_settled.scalars().all()
 
-    # Create new unsettled settlements
+    # Subtract already-settled amounts from balances
+    for s in settled:
+        from decimal import Decimal
+        balances[s.from_member_id] = balances.get(s.from_member_id, Decimal(0)) + s.amount
+        balances[s.to_member_id] = balances.get(s.to_member_id, Decimal(0)) - s.amount
+
+    optimal = minimize_settlements(balances)
+
+    # Create new unsettled settlements only for remaining amounts
     new_settlements = []
     for from_id, to_id, amount in optimal:
         s = Settlement(
@@ -110,6 +118,7 @@ async def get_settlements(
             is_settled=s.is_settled,
             settled_at=s.settled_at,
             confirmed_by_to=s.confirmed_by_to,
+            from_has_telegram=member_has_telegram.get(s.from_member_id, False),
         )
         for s in all_settlements
     ]
@@ -130,6 +139,7 @@ async def update_settlement(
 
     members = await _load_members(settlement.group_id, db)
     member_names = {m.id: m.display_name for m in members}
+    member_has_telegram = {m.id: m.user_id is not None for m in members}
 
     if body.is_settled is not None:
         settlement.is_settled = body.is_settled
@@ -151,6 +161,7 @@ async def update_settlement(
         is_settled=settlement.is_settled,
         settled_at=settlement.settled_at,
         confirmed_by_to=settlement.confirmed_by_to,
+        from_has_telegram=member_has_telegram.get(settlement.from_member_id, False),
     )
 
 
@@ -196,7 +207,11 @@ async def _verify_membership(group_id: int, user_id: int, db: AsyncSession):
             GroupMember.group_id == group_id, GroupMember.user_id == user_id
         )
     )
-    if result.scalar_one_or_none() is None:
+    if result.scalar_one_or_none() is not None:
+        return
+    # Fallback: check if user is the group creator (for legacy groups)
+    group = await db.get(Group, group_id)
+    if group is None or group.created_by_id != user_id:
         raise HTTPException(status_code=403, detail="Not a member")
 
 

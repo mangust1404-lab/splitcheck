@@ -57,10 +57,14 @@ const messages = {
     'addExpense.splitRemainder': 'Split remainder equally',
     'addExpense.saving': 'Saving...',
     'addExpense.save': 'Save Expense',
+    'addExpense.editTitle': 'Edit Expense',
+    'addExpense.update': 'Update Expense',
 
     // ScanReceipt
     'scanReceipt.title': 'Scan Receipt',
     'scanReceipt.tapToScan': 'Tap to take a photo or choose from gallery',
+    'scanReceipt.camera': 'Camera',
+    'scanReceipt.gallery': 'Gallery',
     'scanReceipt.scanning': 'Scanning receipt...',
     'scanReceipt.expensePlaceholder': 'Expense title',
     'scanReceipt.paidBy': 'Paid by:',
@@ -69,6 +73,14 @@ const messages = {
     'scanReceipt.saving': 'Saving...',
     'scanReceipt.save': 'Save Expense',
     'scanReceipt.defaultTitle': 'Scanned receipt',
+    'scanReceipt.scanFailed': 'Failed to scan receipt. Try again.',
+    'scanReceipt.detectedCurrency': 'Currency: {currency}',
+    'scanReceipt.discount': 'Discount',
+    'scanReceipt.itemsTotal': 'Items total',
+    'scanReceipt.receiptTotal': 'Receipt total',
+    'scanReceipt.selectedCount': '{count} selected',
+    'scanReceipt.assignTo': 'Assign to:',
+    'scanReceipt.selectItems': 'Tap items to select, then assign',
 
     // GroupSettings
     'groupSettings.title': 'Group Settings',
@@ -105,11 +117,27 @@ const messages = {
     // ExpenseItem
     'expenseItem.paid': '{name} paid · {splitType}',
 
+    // ExpenseDetail
+    'expenseDetail.loading': 'Loading...',
+    'expenseDetail.paidBy': '{name} paid',
+    'expenseDetail.rate': 'Rate',
+    'expenseDetail.items': 'Items',
+    'expenseDetail.distribution': 'Distribution',
+    'expenseDetail.edit': 'Edit',
+    'expenseDetail.delete': 'Delete Expense',
+    'expenseDetail.deleting': 'Deleting...',
+    'expenseDetail.deleteConfirm': 'Delete this expense?',
+
+    // JoinGroup (extra)
+    'joinGroup.title': 'Join Trip',
+
     // SettlementCard
     'settlementCard.paidConfirmed': 'Paid and confirmed',
     'settlementCard.paid': 'Paid',
     'settlementCard.markPaid': 'Mark Paid',
     'settlementCard.remind': 'Remind',
+    'settlementCard.undo': 'Undo',
+    'settlementCard.noTelegram': '{name} has no Telegram linked. They need to join via invite link.',
   },
 
   ru: {
@@ -164,10 +192,14 @@ const messages = {
     'addExpense.splitRemainder': 'Разделить остаток поровну',
     'addExpense.saving': 'Сохранение...',
     'addExpense.save': 'Сохранить расход',
+    'addExpense.editTitle': 'Редактировать расход',
+    'addExpense.update': 'Обновить расход',
 
     // ScanReceipt
     'scanReceipt.title': 'Скан чека',
     'scanReceipt.tapToScan': 'Сфотографируйте чек или выберите из галереи',
+    'scanReceipt.camera': 'Камера',
+    'scanReceipt.gallery': 'Галерея',
     'scanReceipt.scanning': 'Сканирование чека...',
     'scanReceipt.expensePlaceholder': 'Название расхода',
     'scanReceipt.paidBy': 'Оплатил:',
@@ -176,6 +208,14 @@ const messages = {
     'scanReceipt.saving': 'Сохранение...',
     'scanReceipt.save': 'Сохранить расход',
     'scanReceipt.defaultTitle': 'Сканированный чек',
+    'scanReceipt.scanFailed': 'Не удалось распознать чек. Попробуйте ещё раз.',
+    'scanReceipt.detectedCurrency': 'Валюта: {currency}',
+    'scanReceipt.discount': 'Скидка',
+    'scanReceipt.itemsTotal': 'Итого позиции',
+    'scanReceipt.receiptTotal': 'Итого по чеку',
+    'scanReceipt.selectedCount': 'Выбрано: {count}',
+    'scanReceipt.assignTo': 'Назначить:',
+    'scanReceipt.selectItems': 'Выберите позиции, затем назначьте',
 
     // GroupSettings
     'groupSettings.title': 'Настройки группы',
@@ -212,11 +252,27 @@ const messages = {
     // ExpenseItem
     'expenseItem.paid': '{name} оплатил · {splitType}',
 
+    // ExpenseDetail
+    'expenseDetail.loading': 'Загрузка...',
+    'expenseDetail.paidBy': '{name} оплатил',
+    'expenseDetail.rate': 'Курс',
+    'expenseDetail.items': 'Позиции',
+    'expenseDetail.distribution': 'Распределение',
+    'expenseDetail.edit': 'Редактировать',
+    'expenseDetail.delete': 'Удалить расход',
+    'expenseDetail.deleting': 'Удаление...',
+    'expenseDetail.deleteConfirm': 'Удалить этот расход?',
+
+    // JoinGroup (extra)
+    'joinGroup.title': 'Присоединиться',
+
     // SettlementCard
     'settlementCard.paidConfirmed': 'Оплачено и подтверждено',
     'settlementCard.paid': 'Оплачено',
     'settlementCard.markPaid': 'Оплатил',
     'settlementCard.remind': 'Напомнить',
+    'settlementCard.undo': 'Отменить',
+    'settlementCard.noTelegram': '{name} не привязан к Telegram. Нужно присоединиться по ссылке-приглашению.',
   },
 }
 

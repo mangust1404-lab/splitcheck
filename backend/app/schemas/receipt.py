@@ -12,6 +12,7 @@ class ReceiptItem(BaseModel):
 class ReceiptScanResponse(BaseModel):
     items: list[ReceiptItem]
     total: Decimal | None = None
+    discount: Decimal | None = None
     tax: Decimal | None = None
     tips: Decimal | None = None
     currency: str | None = None

@@ -21,6 +21,7 @@ class SettlementOut(BaseModel):
     is_settled: bool
     settled_at: datetime | None
     confirmed_by_to: bool
+    from_has_telegram: bool = False
 
     model_config = {"from_attributes": True}
 

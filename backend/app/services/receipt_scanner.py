@@ -8,7 +8,7 @@ import anthropic
 from app.config import settings
 from app.schemas.receipt import ReceiptItem, ReceiptScanResponse
 
-RECEIPT_PROMPT = """Analyze this receipt image. Extract all line items with their names, prices, and quantities.
+RECEIPT_PROMPT = """Analyze this receipt image. Extract all line items with their names, per-unit prices, and quantities.
 
 Return a JSON object with this exact structure:
 {
@@ -16,16 +16,18 @@ Return a JSON object with this exact structure:
     {"name": "Item name", "price": 1234.56, "quantity": 1}
   ],
   "total": 1234.56,
+  "discount": 0,
   "tax": 0,
   "tips": 0,
-  "currency": "KZT"
+  "currency": "RUB"
 }
 
 Rules:
-- price is per-unit price, not total for the line
-- quantity defaults to 1 if not shown
-- currency should be the 3-letter ISO code if identifiable, null otherwise
-- total is the final total on the receipt
+- price is the per-unit price, NOT the line total
+- quantity: read carefully from the receipt. If "x2" or "2 шт" is shown, set quantity to that number. Default 1 only if truly not shown
+- total is the FINAL amount paid (after all discounts, rounded, etc.) — the bottom-line number the customer actually pays
+- discount is the total discount amount (positive number), 0 if none
+- currency: detect from the receipt text (look for "руб", "₽", "$", "€", "тг", "₸", etc.). Use ISO 3-letter code (RUB, USD, EUR, KZT). null only if completely unidentifiable
 - tax and tips are 0 if not shown
 - Return ONLY the JSON, no markdown, no explanation"""
 
@@ -37,7 +39,7 @@ async def scan_receipt(image_bytes: bytes, media_type: str) -> ReceiptScanRespon
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
     message = await client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         messages=[
             {
@@ -74,6 +76,7 @@ async def scan_receipt(image_bytes: bytes, media_type: str) -> ReceiptScanRespon
             for item in data.get("items", [])
         ],
         total=Decimal(str(data["total"])) if data.get("total") else None,
+        discount=Decimal(str(data["discount"])) if data.get("discount") else None,
         tax=Decimal(str(data["tax"])) if data.get("tax") else None,
         tips=Decimal(str(data["tips"])) if data.get("tips") else None,
         currency=data.get("currency"),

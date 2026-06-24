@@ -1,5 +1,17 @@
 <template>
   <div class="min-h-screen px-4 pt-4">
+    <div class="flex items-center gap-2 mb-4">
+      <button
+        @click="$router.push({ name: 'my-trips' })"
+        class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold">{{ t('joinGroup.title') }}</h1>
+    </div>
+
     <div v-if="loading" class="p-8 text-center text-gray-400">{{ t('joinGroup.loading') }}</div>
 
     <div v-else-if="error" class="p-8 text-center">

@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +10,9 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models import Expense, ExpenseItem, ExpenseShare, Group, GroupMember, User
 from app.schemas.expense import ExpenseCreate, ExpenseOut
+from app.services.currency import get_exchange_rates
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["expenses"])
 
@@ -38,13 +42,35 @@ async def create_expense(
 ):
     await _verify_membership(group_id, user.id, db)
 
+    # Auto-fetch exchange rate if expense currency differs from group base currency
+    exchange_rate = body.exchange_rate
+    group = await db.get(Group, group_id)
+    if (
+        group
+        and body.currency.upper() != group.base_currency.upper()
+        and exchange_rate == Decimal("1")
+    ):
+        try:
+            rates = await get_exchange_rates(body.currency.upper())
+            rate = rates.get(group.base_currency.upper())
+            if rate:
+                exchange_rate = Decimal(str(rate)).quantize(
+                    Decimal("0.000001"), rounding=ROUND_HALF_UP
+                )
+                logger.info(
+                    "Auto exchange rate %s→%s: %s",
+                    body.currency, group.base_currency, exchange_rate,
+                )
+        except Exception as e:
+            logger.warning("Failed to fetch exchange rate: %s", e)
+
     expense = Expense(
         group_id=group_id,
         paid_by_id=body.paid_by_id,
         title=body.title,
         total_amount=body.total_amount,
         currency=body.currency,
-        exchange_rate=body.exchange_rate,
+        exchange_rate=exchange_rate,
         receipt_image_url=body.receipt_image_url,
         split_type=body.split_type,
     )
@@ -212,5 +238,10 @@ async def _verify_membership(group_id: int, user_id: int, db: AsyncSession):
             GroupMember.group_id == group_id, GroupMember.user_id == user_id
         )
     )
-    if result.scalar_one_or_none() is None:
+    if result.scalar_one_or_none() is not None:
+        return
+    # Fallback: check if user is the group creator (for legacy groups)
+    from app.models import Group as GroupModel
+    group = await db.get(GroupModel, group_id)
+    if group is None or group.created_by_id != user_id:
         raise HTTPException(status_code=403, detail="Not a member of this group")

@@ -53,6 +53,16 @@ async def create_group(
         created_by_id=user.id,
     )
     db.add(group)
+    await db.flush()
+
+    # Auto-add creator as admin member
+    member = GroupMember(
+        group_id=group.id,
+        user_id=user.id,
+        display_name=user.display_name,
+        role="admin",
+    )
+    db.add(member)
     await db.commit()
 
     result = await db.execute(

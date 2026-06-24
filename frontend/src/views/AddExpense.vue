@@ -1,8 +1,20 @@
 <template>
   <div class="min-h-screen px-4 pt-4">
-    <h1 class="text-xl font-bold mb-4">{{ t('addExpense.title') }}</h1>
+    <div class="flex items-center gap-2 mb-4">
+      <button
+        @click="goBack"
+        class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold">{{ isEdit ? t('addExpense.editTitle') : t('addExpense.title') }}</h1>
+    </div>
 
-    <form @submit.prevent="submit" class="space-y-4">
+    <div v-if="loadingExpense" class="text-center text-gray-400 py-16 text-sm">{{ t('expenseDetail.loading') }}</div>
+
+    <form v-else @submit.prevent="submit" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('addExpense.expenseTitle') }}</label>
         <input v-model="title" type="text" :placeholder="t('addExpense.titlePlaceholder')" required
@@ -75,7 +87,7 @@
 
       <button type="submit" :disabled="saving"
         class="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50">
-        {{ saving ? t('addExpense.saving') : t('addExpense.save') }}
+        {{ saving ? t('addExpense.saving') : (isEdit ? t('addExpense.update') : t('addExpense.save')) }}
       </button>
     </form>
   </div>
@@ -85,9 +97,10 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGroupsStore } from '../stores/groups'
-import { createExpense } from '../api/expenses'
+import { createExpense, getExpense } from '../api/expenses'
 import { useCurrency } from '../composables/useCurrency'
 import { useI18n } from '../composables/useI18n'
+import client from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -96,6 +109,9 @@ const { CURRENCIES } = useCurrency()
 const { t } = useI18n()
 
 const groupId = Number(route.params.id)
+const editId = route.query.edit ? Number(route.query.edit) : null
+const isEdit = !!editId
+
 const members = computed(() => store.currentGroup?.members || [])
 
 const title = ref('')
@@ -106,6 +122,7 @@ const splitType = ref('equal')
 const splitAmong = ref([])
 const customAmounts = reactive({})
 const saving = ref(false)
+const loadingExpense = ref(false)
 
 const assignedTotal = computed(() =>
   Object.values(customAmounts).reduce((sum, v) => sum + (Number(v) || 0), 0).toFixed(2)
@@ -114,6 +131,14 @@ const remainder = computed(() => ((Number(amount.value) || 0) - Number(assignedT
 const remainderColor = computed(() =>
   Number(remainder.value) === 0 ? 'text-emerald-600' : Number(remainder.value) > 0 ? 'text-amber-600' : 'text-red-500'
 )
+
+function goBack() {
+  if (isEdit) {
+    router.push({ name: 'expense-detail', params: { id: groupId, expenseId: editId } })
+  } else {
+    router.push({ name: 'trip-detail', params: { id: groupId } })
+  }
+}
 
 function splitRemainder() {
   const remaining = Number(remainder.value)
@@ -140,16 +165,58 @@ async function submit() {
         .filter(([, v]) => Number(v) > 0)
         .map(([memberId, amt]) => ({ member_id: Number(memberId), amount: amt }))
     }
-    await createExpense(groupId, payload)
-    router.back()
+
+    if (isEdit) {
+      await client.patch(`/api/expenses/${editId}`, payload)
+      router.push({ name: 'expense-detail', params: { id: groupId, expenseId: editId } })
+    } else {
+      await createExpense(groupId, payload)
+      router.push({ name: 'trip-detail', params: { id: groupId } })
+    }
   } finally {
     saving.value = false
+  }
+}
+
+async function loadExpenseForEdit() {
+  loadingExpense.value = true
+  try {
+    const exp = await getExpense(editId)
+    title.value = exp.title
+    amount.value = String(exp.total_amount)
+    currency.value = exp.currency
+    paidById.value = exp.paid_by_id
+
+    // Determine split type for edit: by_items and custom both show as "custom"
+    if (exp.split_type === 'equal') {
+      splitType.value = 'equal'
+      // Reconstruct splitAmong from shares
+      splitAmong.value = [...new Set(exp.shares.map(s => s.member_id))]
+    } else {
+      splitType.value = 'custom'
+      // Merge shares by member_id into customAmounts
+      const merged = {}
+      for (const share of exp.shares) {
+        merged[share.member_id] = (merged[share.member_id] || 0) + Number(share.amount)
+      }
+      for (const [memberId, amt] of Object.entries(merged)) {
+        customAmounts[memberId] = amt.toFixed(2)
+      }
+    }
+  } finally {
+    loadingExpense.value = false
   }
 }
 
 onMounted(async () => {
   if (!store.currentGroup) await store.loadGroup(groupId)
   currency.value = store.currentGroup?.base_currency || 'KZT'
-  members.value.forEach((m) => splitAmong.value.push(m.id))
+
+  if (isEdit) {
+    await loadExpenseForEdit()
+  } else {
+    members.value.forEach((m) => splitAmong.value.push(m.id))
+    if (members.value.length > 0) paidById.value = members.value[0].id
+  }
 })
 </script>

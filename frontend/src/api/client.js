@@ -10,6 +10,10 @@ client.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // Bust cache for GET requests (Telegram WebView caches aggressively)
+  if (config.method === 'get') {
+    config.params = { ...config.params, _t: Date.now() }
+  }
   return config
 })
 
