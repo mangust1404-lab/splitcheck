@@ -19,12 +19,19 @@ Friends on a trip (3-8 people, multiple days, many small expenses). At the end o
 |-------|-----------|
 | Frontend | Vue.js 3 + Vite + Tailwind CSS + Telegram Web App SDK |
 | Backend | FastAPI (Python) |
-| Database | PostgreSQL |
+| Database | SQLite (aiosqlite) |
 | Receipt OCR | Claude Vision API |
 | File Storage | Cloudflare R2 (receipt images) |
-| Deploy | Docker (Railway or VPS) |
+| Deploy | cloudflared tunnel (dev); Docker planned for production |
 
 ## Core Features (MVP)
+
+### 0. Internationalization (i18n)
+
+- Two languages: **Russian** and **English**
+- Auto-detected from Telegram user's `language_code` (falls back to English)
+- Lightweight composable (`useI18n`) with reactive locale and `{param}` interpolation
+- All UI strings translated; code comments and API remain in English
 
 ### 1. Groups (Trips)
 
@@ -67,15 +74,22 @@ No hard blocks on save. Instead:
 - Participant avatars bar at bottom
 
 **Two assignment modes:**
-- **Default (tap → popup):** Tap item → popup with participant checkboxes. Intuitive for "this pizza was shared by 3 people"
-- **Brush mode (power user):** Long-press participant avatar → enter brush mode → tap items to assign. Fast for "each person marks their own items"
+- **Default (tap-to-select + assign):** Tap items to multi-select them (highlighted), then tap a participant avatar in the floating bottom bar to assign all selected items at once. Intuitive for batch assignment.
+- **Brush mode:** Tap participant avatar in the ParticipantBar → enter brush mode → tap items to toggle exclusive assignment. Fast for "each person marks their own items".
+
+> **Note:** The original "popup with checkboxes" mode was simplified to tap-to-assign with multi-select for the MVP. Brush mode works via single tap on avatar (not long-press).
+
+**Additional receipt features:**
+- Discount line item support — discounts are proportionally distributed across assigned item shares
+- Receipt total vs items total comparison shown when discount is present
+- Detected currency displayed as a badge (auto-detected from receipt by LLM)
 
 ### 4. Multi-Currency
 
 - Each group has a `base_currency` (home currency for final settlements)
 - Each expense stores its `currency` and `exchange_rate` to base currency
 - Exchange rate is fixed at the moment of expense creation
-- Currency rates fetched from a public API, cached on backend
+- Currency rates fetched from open.er-api.com (free, no API key required), cached for 1 hour on backend
 
 ### 5. Balances & Settlements
 
@@ -94,11 +108,19 @@ Algorithm:
 
 Result displayed as transfer cards: `[Debtor] → amount → [Creditor]`
 
-Each settlement has:
-- "Mark as paid" button (debtor marks)
-- "Confirm" from creditor side (two-party confirmation)
-- "Remind" button — sends Telegram notification (if participant is linked)
-- Settled transfers shown with green background and confirmation text
+**Backend logic:** Already-settled amounts are subtracted from balances before running `minimize_settlements`, preventing duplicate settlements when some transfers are already marked as paid.
+
+**3-state visual system for settlement cards:**
+
+| State | Card Style | Actions |
+|-------|-----------|---------|
+| Not paid | White card, gray border | "Mark Paid" button + "Remind" button |
+| Paid (not confirmed) | Light green card, amount crossed out, checkmark | "Paid" label + "Undo" button |
+| Paid + confirmed | Green card | "Paid and confirmed" text (no actions) |
+
+- "Remind" button sends a Telegram notification to the debtor
+- If the debtor is a virtual member (no Telegram linked), "Remind" shows an alert explaining they need to join via invite link
+- "Undo" resets the settlement back to unpaid state
 
 ### 6. Telegram Notifications
 
@@ -162,14 +184,14 @@ expense_shares
 
 settlements
 ├── id (PK)
-├── group_id (FK → groups)
-├── from_member (FK → group_members)
-├── to_member (FK → group_members)
-├── amount (decimal)
+├── group_id (FK → groups, CASCADE)
+├── from_member_id (FK → group_members)
+├── to_member_id (FK → group_members)
+├── amount (decimal 12,2)
 ├── currency (char 3)
-├── is_settled (boolean)
-├── settled_at (nullable)
-└── confirmed_by_to (boolean)
+├── is_settled (boolean, default false)
+├── settled_at (nullable, timezone-aware)
+└── confirmed_by_to (boolean, default false)
 ```
 
 ## API Endpoints
@@ -177,13 +199,16 @@ settlements
 ```
 # Auth
 POST   /api/auth/telegram            — validate initData, issue JWT
+GET    /api/auth/me                   — get current user info
 
 # Groups
 GET    /api/groups                    — user's groups (active + archived)
 POST   /api/groups                    — create group
+GET    /api/groups/invite/:code       — preview group before joining (no membership required)
 GET    /api/groups/:id                — group details
 PATCH  /api/groups/:id                — edit (name, currency, archive/unarchive)
-POST   /api/groups/:id/join           — join by invite_code
+DELETE /api/groups/:id                — delete group (owner only)
+POST   /api/groups/:id/join           — join by invite_code (link to virtual member or create new)
 POST   /api/groups/:id/members        — add virtual member
 
 # Expenses
@@ -199,10 +224,11 @@ POST   /api/receipts/scan             — upload photo → LLM Vision → JSON
 # Balances & Settlements
 GET    /api/groups/:id/balances       — current participant balances
 GET    /api/groups/:id/settlements    — optimized transfers
-PATCH  /api/settlements/:id           — mark paid / confirm
+PATCH  /api/settlements/:id           — mark paid / confirm / undo
+POST   /api/settlements/:id/remind    — send Telegram reminder to debtor
 
 # Currency
-GET    /api/currencies/rates          — current exchange rates (cached)
+GET    /api/currencies/rates          — current exchange rates (cached, 1h TTL)
 ```
 
 ## Auth Flow
@@ -218,10 +244,12 @@ GET    /api/currencies/rates          — current exchange rates (cached)
 
 1. **My Trips** — list of active groups, archive tab, "New trip" button
 2. **Trip Detail** — expense list, tabs: Expenses / Balances / Settlements
-3. **Add Expense** — manual entry form (title, amount, payer, split mode)
-4. **Scan Receipt** — camera → all-in-one item assignment screen
-5. **Settlement Detail** — transfer card with pay/confirm/remind actions
-6. **Group Settings** — members, invite link, currency, archive/delete
+3. **Add Expense** — manual entry form (title, amount, payer, split mode); also used for editing existing expenses
+4. **Scan Receipt** — camera/gallery → all-in-one item assignment with multi-select
+5. **Expense Detail** — shows expense info, items, distribution; edit and delete actions
+6. **Join Group** — invite preview (group name, members list), link to existing virtual member or join as new participant
+7. **Group Settings** — members, invite link, currency, archive/reactivate, delete group
+8. **Settlement Cards** (inline in Trip Detail) — 3-state transfer cards with pay/confirm/remind/undo actions
 
 ## Out of Scope (v2+)
 

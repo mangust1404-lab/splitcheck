@@ -1,12 +1,12 @@
 # SplitCheck Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build a Telegram Mini App for splitting group expenses with LLM-powered receipt scanning.
 
-**Architecture:** Monorepo with `backend/` (FastAPI + async SQLAlchemy + PostgreSQL) and `frontend/` (Vue 3 + Vite + Tailwind). Receipt OCR via Claude Vision API. Telegram Web App SDK for auth and notifications. Follows patterns from the existing almaty-guide project.
+**Architecture:** Monorepo with `backend/` (FastAPI + async SQLAlchemy + SQLite) and `frontend/` (Vue 3 + Vite + Tailwind). Receipt OCR via Claude Vision API. Telegram Web App SDK for auth and notifications.
 
-**Tech Stack:** Python 3.11, FastAPI, SQLAlchemy 2.0 (async), Alembic, PostgreSQL, Vue.js 3, Vite, Tailwind CSS, Pinia, Vue Router, Telegram Web App SDK, Anthropic Python SDK.
+**Tech Stack:** Python 3.11, FastAPI, SQLAlchemy 2.0 (async), Alembic, SQLite (aiosqlite), Vue.js 3, Vite, Tailwind CSS, Pinia, Vue Router, Telegram Web App SDK, Anthropic Python SDK.
 
 ---
 
@@ -126,7 +126,7 @@ splitcheck/
 - Create: `.gitignore`
 - Create: `.env.example`
 
-- [ ] **Step 1: Create .gitignore**
+- [x] **Step 1: Create .gitignore**
 
 ```gitignore
 # Python
@@ -155,7 +155,7 @@ Thumbs.db
 .superpowers/
 ```
 
-- [ ] **Step 2: Create backend/requirements.txt**
+- [x] **Step 2: Create backend/requirements.txt**
 
 ```
 fastapi==0.115.12
@@ -174,7 +174,7 @@ pytest-asyncio==0.26.0
 httpx==0.28.1
 ```
 
-- [ ] **Step 3: Create backend/.env.example**
+- [x] **Step 3: Create backend/.env.example**
 
 ```env
 DATABASE_URL=postgresql+asyncpg://splitcheck:splitcheck_dev@localhost:5432/splitcheck
@@ -188,11 +188,11 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-key
 R2_BUCKET=splitcheck-receipts
 ```
 
-- [ ] **Step 4: Create backend/app/__init__.py**
+- [x] **Step 4: Create backend/app/__init__.py**
 
 Empty file.
 
-- [ ] **Step 5: Create backend/app/config.py**
+- [x] **Step 5: Create backend/app/config.py**
 
 ```python
 from pydantic import model_validator
@@ -230,7 +230,7 @@ class Settings(BaseSettings):
 settings = Settings()
 ```
 
-- [ ] **Step 6: Create backend/app/database.py**
+- [x] **Step 6: Create backend/app/database.py**
 
 ```python
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -253,7 +253,7 @@ async def get_db():
         yield session
 ```
 
-- [ ] **Step 7: Create backend/app/main.py**
+- [x] **Step 7: Create backend/app/main.py**
 
 ```python
 from fastapi import FastAPI
@@ -277,12 +277,12 @@ async def health():
     return {"status": "ok"}
 ```
 
-- [ ] **Step 8: Verify backend starts**
+- [x] **Step 8: Verify backend starts**
 
 Run: `cd backend && pip install -r requirements.txt && python -m uvicorn app.main:app --port 8000`
 Expected: Server starts, `GET /api/health` returns `{"status": "ok"}`
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add .gitignore .env.example backend/
@@ -300,7 +300,7 @@ git commit -m "feat: backend scaffolding with FastAPI, config, database setup"
 - Create: `backend/app/models/expense.py`
 - Create: `backend/app/models/settlement.py`
 
-- [ ] **Step 1: Create backend/app/models/user.py**
+- [x] **Step 1: Create backend/app/models/user.py**
 
 ```python
 from datetime import datetime
@@ -325,7 +325,7 @@ class User(Base):
     )
 ```
 
-- [ ] **Step 2: Create backend/app/models/group.py**
+- [x] **Step 2: Create backend/app/models/group.py**
 
 ```python
 import secrets
@@ -378,7 +378,7 @@ class GroupMember(Base):
     )
 ```
 
-- [ ] **Step 3: Create backend/app/models/expense.py**
+- [x] **Step 3: Create backend/app/models/expense.py**
 
 ```python
 from datetime import datetime
@@ -444,7 +444,7 @@ class ExpenseShare(Base):
     expense: Mapped["Expense"] = relationship(back_populates="shares")
 ```
 
-- [ ] **Step 4: Create backend/app/models/settlement.py**
+- [x] **Step 4: Create backend/app/models/settlement.py**
 
 ```python
 from datetime import datetime
@@ -472,7 +472,7 @@ class Settlement(Base):
     confirmed_by_to: Mapped[bool] = mapped_column(Boolean, default=False)
 ```
 
-- [ ] **Step 5: Create backend/app/models/__init__.py**
+- [x] **Step 5: Create backend/app/models/__init__.py**
 
 ```python
 from app.models.user import Base, User
@@ -492,7 +492,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/app/models/
@@ -508,11 +508,11 @@ git commit -m "feat: add all SQLAlchemy database models"
 - Create: `backend/alembic/env.py`
 - Create: `backend/alembic/script.py.mako`
 
-- [ ] **Step 1: Initialize alembic**
+- [x] **Step 1: Initialize alembic**
 
 Run: `cd backend && alembic init alembic`
 
-- [ ] **Step 2: Edit backend/alembic/env.py**
+- [x] **Step 2: Edit backend/alembic/env.py**
 
 Replace the generated `env.py` with:
 
@@ -563,21 +563,21 @@ else:
     asyncio.run(run_migrations_online())
 ```
 
-- [ ] **Step 3: Update alembic.ini — remove sqlalchemy.url line**
+- [x] **Step 3: Update alembic.ini — remove sqlalchemy.url line**
 
 The `sqlalchemy.url` is provided by `app.config.settings` in `env.py`, so comment out or remove it from `alembic.ini`.
 
-- [ ] **Step 4: Generate initial migration**
+- [x] **Step 4: Generate initial migration**
 
 Run: `cd backend && alembic revision --autogenerate -m "initial schema"`
 Expected: New migration file in `alembic/versions/`
 
-- [ ] **Step 5: Apply migration**
+- [x] **Step 5: Apply migration**
 
 Run: `cd backend && alembic upgrade head`
 Expected: All tables created in PostgreSQL
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/alembic/ backend/alembic.ini
@@ -599,7 +599,7 @@ git commit -m "feat: alembic setup with initial schema migration"
 - Create: `backend/tests/test_auth.py`
 - Modify: `backend/app/main.py`
 
-- [ ] **Step 1: Create backend/app/auth.py**
+- [x] **Step 1: Create backend/app/auth.py**
 
 ```python
 import hashlib
@@ -664,7 +664,7 @@ def decode_access_token(token: str) -> int | None:
         return None
 ```
 
-- [ ] **Step 2: Create backend/app/deps.py**
+- [x] **Step 2: Create backend/app/deps.py**
 
 ```python
 from fastapi import Depends, HTTPException, status
@@ -698,11 +698,11 @@ async def get_current_user(
     return user
 ```
 
-- [ ] **Step 3: Create backend/app/schemas/__init__.py**
+- [x] **Step 3: Create backend/app/schemas/__init__.py**
 
 Empty file.
 
-- [ ] **Step 4: Create backend/app/schemas/auth.py**
+- [x] **Step 4: Create backend/app/schemas/auth.py**
 
 ```python
 from pydantic import BaseModel
@@ -728,11 +728,11 @@ class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 ```
 
-- [ ] **Step 5: Create backend/app/api/__init__.py**
+- [x] **Step 5: Create backend/app/api/__init__.py**
 
 Empty file.
 
-- [ ] **Step 6: Create backend/app/api/auth.py**
+- [x] **Step 6: Create backend/app/api/auth.py**
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -792,7 +792,7 @@ async def get_me(user: User = Depends(get_current_user)):
     return user
 ```
 
-- [ ] **Step 7: Register auth router in main.py**
+- [x] **Step 7: Register auth router in main.py**
 
 Replace `backend/app/main.py` with:
 
@@ -821,7 +821,7 @@ async def health():
     return {"status": "ok"}
 ```
 
-- [ ] **Step 8: Write auth tests — create backend/tests/conftest.py**
+- [x] **Step 8: Write auth tests — create backend/tests/conftest.py**
 
 ```python
 import asyncio
@@ -879,7 +879,7 @@ async def db():
         yield session
 ```
 
-- [ ] **Step 9: Write backend/tests/test_auth.py**
+- [x] **Step 9: Write backend/tests/test_auth.py**
 
 ```python
 import hashlib
@@ -959,12 +959,12 @@ class TestAuthEndpoint:
         assert resp.status_code == 401
 ```
 
-- [ ] **Step 10: Run tests**
+- [x] **Step 10: Run tests**
 
 Run: `cd backend && pip install aiosqlite && python -m pytest tests/test_auth.py -v`
 Expected: All tests pass.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add backend/app/auth.py backend/app/deps.py backend/app/schemas/ backend/app/api/ backend/app/main.py backend/tests/
@@ -983,7 +983,7 @@ git commit -m "feat: Telegram auth with JWT, validation, and tests"
 - Create: `backend/tests/test_groups.py`
 - Modify: `backend/app/main.py` — add groups router
 
-- [ ] **Step 1: Create backend/app/schemas/group.py**
+- [x] **Step 1: Create backend/app/schemas/group.py**
 
 ```python
 from datetime import datetime
@@ -1032,7 +1032,7 @@ class JoinRequest(BaseModel):
     link_to_member_id: int | None = None  # optional: link to existing virtual member
 ```
 
-- [ ] **Step 2: Create backend/app/api/groups.py**
+- [x] **Step 2: Create backend/app/api/groups.py**
 
 ```python
 from datetime import datetime, timezone
@@ -1221,7 +1221,7 @@ async def _get_group_for_user(
     return group
 ```
 
-- [ ] **Step 3: Register groups router in main.py**
+- [x] **Step 3: Register groups router in main.py**
 
 Add to `backend/app/main.py`:
 
@@ -1231,7 +1231,7 @@ from app.api.groups import router as groups_router
 app.include_router(groups_router)
 ```
 
-- [ ] **Step 4: Write backend/tests/test_groups.py**
+- [x] **Step 4: Write backend/tests/test_groups.py**
 
 ```python
 import pytest
@@ -1329,12 +1329,12 @@ class TestGroups:
         assert resp.json()["archived_at"] is not None
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `cd backend && python -m pytest tests/test_groups.py -v`
 Expected: All tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/app/schemas/group.py backend/app/api/groups.py backend/app/main.py backend/tests/test_groups.py
@@ -1351,7 +1351,7 @@ git commit -m "feat: groups API with CRUD, join, virtual members"
 - Create: `backend/tests/test_expenses.py`
 - Modify: `backend/app/main.py` — add expenses router
 
-- [ ] **Step 1: Create backend/app/schemas/expense.py**
+- [x] **Step 1: Create backend/app/schemas/expense.py**
 
 ```python
 from datetime import datetime
@@ -1422,7 +1422,7 @@ class ExpenseOut(BaseModel):
     model_config = {"from_attributes": True}
 ```
 
-- [ ] **Step 2: Create backend/app/api/expenses.py**
+- [x] **Step 2: Create backend/app/api/expenses.py**
 
 ```python
 from decimal import Decimal, ROUND_HALF_UP
@@ -1571,7 +1571,7 @@ async def _verify_membership(group_id: int, user_id: int, db: AsyncSession):
         raise HTTPException(status_code=403, detail="Not a member of this group")
 ```
 
-- [ ] **Step 3: Register expenses router in main.py**
+- [x] **Step 3: Register expenses router in main.py**
 
 Add to `backend/app/main.py`:
 
@@ -1581,7 +1581,7 @@ from app.api.expenses import router as expenses_router
 app.include_router(expenses_router)
 ```
 
-- [ ] **Step 4: Write backend/tests/test_expenses.py**
+- [x] **Step 4: Write backend/tests/test_expenses.py**
 
 ```python
 import pytest
@@ -1703,12 +1703,12 @@ class TestExpenses:
         assert resp.status_code == 204
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `cd backend && python -m pytest tests/test_expenses.py -v`
 Expected: All tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/app/schemas/expense.py backend/app/api/expenses.py backend/app/main.py backend/tests/test_expenses.py
@@ -1724,11 +1724,11 @@ git commit -m "feat: expenses API with equal, custom, and by_items split modes"
 - Create: `backend/app/services/settlement_calculator.py`
 - Create: `backend/tests/test_settlement_calculator.py`
 
-- [ ] **Step 1: Create backend/app/services/__init__.py**
+- [x] **Step 1: Create backend/app/services/__init__.py**
 
 Empty file.
 
-- [ ] **Step 2: Write failing test — backend/tests/test_settlement_calculator.py**
+- [x] **Step 2: Write failing test — backend/tests/test_settlement_calculator.py**
 
 ```python
 from decimal import Decimal
@@ -1844,12 +1844,12 @@ class TestMinimizeSettlements:
         assert len(settlements) == 0
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `cd backend && python -m pytest tests/test_settlement_calculator.py -v`
 Expected: ImportError — module not found.
 
-- [ ] **Step 4: Implement backend/app/services/settlement_calculator.py**
+- [x] **Step 4: Implement backend/app/services/settlement_calculator.py**
 
 ```python
 from decimal import Decimal
@@ -1923,12 +1923,12 @@ def minimize_settlements(balances: dict[int, Decimal]) -> list[tuple[int, int, D
     return settlements
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd backend && python -m pytest tests/test_settlement_calculator.py -v`
 Expected: All tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/app/services/ backend/tests/test_settlement_calculator.py
@@ -1944,7 +1944,7 @@ git commit -m "feat: settlement calculator with balance computation and transact
 - Create: `backend/app/api/settlements.py`
 - Modify: `backend/app/main.py` — add settlements router
 
-- [ ] **Step 1: Create backend/app/schemas/settlement.py**
+- [x] **Step 1: Create backend/app/schemas/settlement.py**
 
 ```python
 from datetime import datetime
@@ -1979,7 +1979,7 @@ class SettlementUpdate(BaseModel):
     confirmed_by_to: bool | None = None
 ```
 
-- [ ] **Step 2: Create backend/app/api/settlements.py**
+- [x] **Step 2: Create backend/app/api/settlements.py**
 
 ```python
 from datetime import datetime, timezone
@@ -2180,7 +2180,7 @@ async def _load_expenses_for_calculation(
     ]
 ```
 
-- [ ] **Step 3: Register settlements router in main.py**
+- [x] **Step 3: Register settlements router in main.py**
 
 Add to `backend/app/main.py`:
 
@@ -2190,7 +2190,7 @@ from app.api.settlements import router as settlements_router
 app.include_router(settlements_router)
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/app/schemas/settlement.py backend/app/api/settlements.py backend/app/main.py
@@ -2210,7 +2210,7 @@ git commit -m "feat: balances and settlements API with transaction minimization"
 - Create: `backend/tests/test_receipts.py`
 - Modify: `backend/app/main.py` — add receipts router
 
-- [ ] **Step 1: Create backend/app/schemas/receipt.py**
+- [x] **Step 1: Create backend/app/schemas/receipt.py**
 
 ```python
 from decimal import Decimal
@@ -2233,7 +2233,7 @@ class ReceiptScanResponse(BaseModel):
     raw_text: str | None = None
 ```
 
-- [ ] **Step 2: Create backend/app/services/receipt_scanner.py**
+- [x] **Step 2: Create backend/app/services/receipt_scanner.py**
 
 ```python
 import base64
@@ -2318,7 +2318,7 @@ async def scan_receipt(image_bytes: bytes, media_type: str) -> ReceiptScanRespon
     )
 ```
 
-- [ ] **Step 3: Create backend/app/api/receipts.py**
+- [x] **Step 3: Create backend/app/api/receipts.py**
 
 ```python
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -2357,7 +2357,7 @@ async def scan_receipt_endpoint(
     return result
 ```
 
-- [ ] **Step 4: Register receipts router in main.py**
+- [x] **Step 4: Register receipts router in main.py**
 
 Add to `backend/app/main.py`:
 
@@ -2367,7 +2367,7 @@ from app.api.receipts import router as receipts_router
 app.include_router(receipts_router)
 ```
 
-- [ ] **Step 5: Write backend/tests/test_receipts.py (unit test with mocked API)**
+- [x] **Step 5: Write backend/tests/test_receipts.py (unit test with mocked API)**
 
 ```python
 import json
@@ -2414,12 +2414,12 @@ class TestReceiptScanner:
         assert result.currency == "KZT"
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `cd backend && python -m pytest tests/test_receipts.py -v`
 Expected: All tests pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add backend/app/schemas/receipt.py backend/app/services/receipt_scanner.py backend/app/api/receipts.py backend/app/main.py backend/tests/test_receipts.py
@@ -2435,7 +2435,7 @@ git commit -m "feat: receipt scanning via Claude Vision API with structured pars
 - Create: `backend/app/api/currencies.py`
 - Modify: `backend/app/main.py` — add currencies router
 
-- [ ] **Step 1: Create backend/app/services/currency.py**
+- [x] **Step 1: Create backend/app/services/currency.py**
 
 ```python
 import time
@@ -2466,7 +2466,7 @@ async def get_exchange_rates(base: str = "USD") -> dict[str, float]:
     return rates
 ```
 
-- [ ] **Step 2: Create backend/app/api/currencies.py**
+- [x] **Step 2: Create backend/app/api/currencies.py**
 
 ```python
 from fastapi import APIRouter, Query
@@ -2482,7 +2482,7 @@ async def get_rates(base: str = Query("USD", max_length=3)):
     return {"base": base.upper(), "rates": rates}
 ```
 
-- [ ] **Step 3: Register currencies router in main.py**
+- [x] **Step 3: Register currencies router in main.py**
 
 Add to `backend/app/main.py`:
 
@@ -2492,7 +2492,7 @@ from app.api.currencies import router as currencies_router
 app.include_router(currencies_router)
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/app/services/currency.py backend/app/api/currencies.py backend/app/main.py
@@ -2515,7 +2515,7 @@ git commit -m "feat: currency exchange rates API with in-memory cache"
 - Create: `frontend/src/App.vue`
 - Create: `frontend/src/router/index.js`
 
-- [ ] **Step 1: Create frontend/package.json**
+- [x] **Step 1: Create frontend/package.json**
 
 ```json
 {
@@ -2544,7 +2544,7 @@ git commit -m "feat: currency exchange rates API with in-memory cache"
 }
 ```
 
-- [ ] **Step 2: Create frontend/index.html**
+- [x] **Step 2: Create frontend/index.html**
 
 ```html
 <!DOCTYPE html>
@@ -2562,7 +2562,7 @@ git commit -m "feat: currency exchange rates API with in-memory cache"
 </html>
 ```
 
-- [ ] **Step 3: Create frontend/vite.config.js**
+- [x] **Step 3: Create frontend/vite.config.js**
 
 ```javascript
 import { defineConfig } from 'vite'
@@ -2578,7 +2578,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 4: Create frontend/tailwind.config.js**
+- [x] **Step 4: Create frontend/tailwind.config.js**
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
@@ -2596,7 +2596,7 @@ export default {
 }
 ```
 
-- [ ] **Step 5: Create frontend/postcss.config.js**
+- [x] **Step 5: Create frontend/postcss.config.js**
 
 ```javascript
 export default {
@@ -2607,7 +2607,7 @@ export default {
 }
 ```
 
-- [ ] **Step 6: Create frontend/src/main.js**
+- [x] **Step 6: Create frontend/src/main.js**
 
 ```javascript
 import { createApp } from 'vue'
@@ -2622,7 +2622,7 @@ app.use(router)
 app.mount('#app')
 ```
 
-- [ ] **Step 7: Create frontend/src/style.css**
+- [x] **Step 7: Create frontend/src/style.css**
 
 ```css
 @tailwind base;
@@ -2637,7 +2637,7 @@ body {
 }
 ```
 
-- [ ] **Step 8: Create frontend/src/router/index.js**
+- [x] **Step 8: Create frontend/src/router/index.js**
 
 ```javascript
 import { createRouter, createWebHistory } from 'vue-router'
@@ -2659,7 +2659,7 @@ const router = createRouter({
 export default router
 ```
 
-- [ ] **Step 9: Create frontend/src/App.vue**
+- [x] **Step 9: Create frontend/src/App.vue**
 
 ```vue
 <template>
@@ -2667,12 +2667,12 @@ export default router
 </template>
 ```
 
-- [ ] **Step 10: Install dependencies and verify**
+- [x] **Step 10: Install dependencies and verify**
 
 Run: `cd frontend && npm install && npm run dev`
 Expected: Vite dev server starts on `http://localhost:5173`
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add frontend/
@@ -2689,7 +2689,7 @@ git commit -m "feat: frontend scaffolding with Vue 3, Vite, Tailwind, Pinia, Vue
 - Create: `frontend/src/stores/auth.js`
 - Create: `frontend/src/composables/useTelegram.js`
 
-- [ ] **Step 1: Create frontend/src/composables/useTelegram.js**
+- [x] **Step 1: Create frontend/src/composables/useTelegram.js**
 
 ```javascript
 export function useTelegram() {
@@ -2728,7 +2728,7 @@ export function useTelegram() {
 }
 ```
 
-- [ ] **Step 2: Create frontend/src/api/client.js**
+- [x] **Step 2: Create frontend/src/api/client.js**
 
 ```javascript
 import axios from 'axios'
@@ -2760,7 +2760,7 @@ client.interceptors.response.use(
 export default client
 ```
 
-- [ ] **Step 3: Create frontend/src/api/auth.js**
+- [x] **Step 3: Create frontend/src/api/auth.js**
 
 ```javascript
 import client from './client'
@@ -2776,7 +2776,7 @@ export async function getMe() {
 }
 ```
 
-- [ ] **Step 4: Create frontend/src/stores/auth.js**
+- [x] **Step 4: Create frontend/src/stores/auth.js**
 
 ```javascript
 import { defineStore } from 'pinia'
@@ -2836,7 +2836,7 @@ export const useAuthStore = defineStore('auth', () => {
 })
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/api/ frontend/src/stores/auth.js frontend/src/composables/useTelegram.js
@@ -2854,7 +2854,7 @@ git commit -m "feat: API client with JWT interceptor, Telegram auth store"
 - Create: `frontend/src/api/settlements.js`
 - Create: `frontend/src/stores/groups.js`
 
-- [ ] **Step 1: Create frontend/src/api/groups.js**
+- [x] **Step 1: Create frontend/src/api/groups.js**
 
 ```javascript
 import client from './client'
@@ -2895,7 +2895,7 @@ export async function addMember(groupId, displayName) {
 }
 ```
 
-- [ ] **Step 2: Create frontend/src/api/expenses.js**
+- [x] **Step 2: Create frontend/src/api/expenses.js**
 
 ```javascript
 import client from './client'
@@ -2920,7 +2920,7 @@ export async function deleteExpense(id) {
 }
 ```
 
-- [ ] **Step 3: Create frontend/src/api/receipts.js**
+- [x] **Step 3: Create frontend/src/api/receipts.js**
 
 ```javascript
 import client from './client'
@@ -2935,7 +2935,7 @@ export async function scanReceipt(file) {
 }
 ```
 
-- [ ] **Step 4: Create frontend/src/api/settlements.js**
+- [x] **Step 4: Create frontend/src/api/settlements.js**
 
 ```javascript
 import client from './client'
@@ -2956,7 +2956,7 @@ export async function updateSettlement(id, payload) {
 }
 ```
 
-- [ ] **Step 5: Create frontend/src/stores/groups.js**
+- [x] **Step 5: Create frontend/src/stores/groups.js**
 
 ```javascript
 import { defineStore } from 'pinia'
@@ -2993,7 +2993,7 @@ export const useGroupsStore = defineStore('groups', () => {
 })
 ```
 
-- [ ] **Step 6: Create frontend/src/utils/format.js**
+- [x] **Step 6: Create frontend/src/utils/format.js**
 
 ```javascript
 export function formatAmount(amount, currency = 'KZT') {
@@ -3009,7 +3009,7 @@ export function formatDate(dateStr) {
 }
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/api/ frontend/src/stores/groups.js frontend/src/utils/format.js
@@ -3026,7 +3026,7 @@ git commit -m "feat: frontend API modules, groups store, formatting utils"
 - Create: `frontend/src/views/MyTrips.vue`
 - Create: `frontend/src/components/GroupCard.vue`
 
-- [ ] **Step 1: Create frontend/src/components/GroupCard.vue**
+- [x] **Step 1: Create frontend/src/components/GroupCard.vue**
 
 ```vue
 <template>
@@ -3080,7 +3080,7 @@ function initials(name) {
 </script>
 ```
 
-- [ ] **Step 2: Create frontend/src/views/MyTrips.vue**
+- [x] **Step 2: Create frontend/src/views/MyTrips.vue**
 
 ```vue
 <template>
@@ -3159,7 +3159,7 @@ onMounted(async () => {
 </script>
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/views/MyTrips.vue frontend/src/components/GroupCard.vue
@@ -3174,7 +3174,7 @@ git commit -m "feat: MyTrips view with active/archived tabs and GroupCard compon
 - Create: `frontend/src/views/CreateGroup.vue`
 - Create: `frontend/src/composables/useCurrency.js`
 
-- [ ] **Step 1: Create frontend/src/composables/useCurrency.js**
+- [x] **Step 1: Create frontend/src/composables/useCurrency.js**
 
 ```javascript
 export const CURRENCIES = [
@@ -3196,7 +3196,7 @@ export function useCurrency() {
 }
 ```
 
-- [ ] **Step 2: Create frontend/src/views/CreateGroup.vue**
+- [x] **Step 2: Create frontend/src/views/CreateGroup.vue**
 
 ```vue
 <template>
@@ -3301,7 +3301,7 @@ async function submit() {
 </script>
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/views/CreateGroup.vue frontend/src/composables/useCurrency.js
@@ -3318,7 +3318,7 @@ git commit -m "feat: CreateGroup view with name, currency, and participants form
 - Create: `frontend/src/components/BalanceBar.vue`
 - Create: `frontend/src/components/SettlementCard.vue`
 
-- [ ] **Step 1: Create frontend/src/components/ExpenseItem.vue**
+- [x] **Step 1: Create frontend/src/components/ExpenseItem.vue**
 
 ```vue
 <template>
@@ -3353,7 +3353,7 @@ const paidByName = computed(() => {
 </script>
 ```
 
-- [ ] **Step 2: Create frontend/src/components/BalanceBar.vue**
+- [x] **Step 2: Create frontend/src/components/BalanceBar.vue**
 
 ```vue
 <template>
@@ -3407,7 +3407,7 @@ const barWidth = computed(() => {
 </script>
 ```
 
-- [ ] **Step 3: Create frontend/src/components/SettlementCard.vue**
+- [x] **Step 3: Create frontend/src/components/SettlementCard.vue**
 
 ```vue
 <template>
@@ -3484,7 +3484,7 @@ const toInitials = computed(() => getInitials(props.settlement.to_member_name))
 </script>
 ```
 
-- [ ] **Step 4: Create frontend/src/views/TripDetail.vue**
+- [x] **Step 4: Create frontend/src/views/TripDetail.vue**
 
 ```vue
 <template>
@@ -3615,7 +3615,7 @@ onMounted(async () => {
 </script>
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/views/TripDetail.vue frontend/src/components/ExpenseItem.vue frontend/src/components/BalanceBar.vue frontend/src/components/SettlementCard.vue
@@ -3629,7 +3629,7 @@ git commit -m "feat: TripDetail view with expenses, balances, and settlements ta
 **Files:**
 - Create: `frontend/src/views/AddExpense.vue`
 
-- [ ] **Step 1: Create frontend/src/views/AddExpense.vue**
+- [x] **Step 1: Create frontend/src/views/AddExpense.vue**
 
 ```vue
 <template>
@@ -3790,7 +3790,7 @@ onMounted(async () => {
 </script>
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/views/AddExpense.vue
@@ -3807,7 +3807,7 @@ git commit -m "feat: AddExpense view with equal/custom split modes and smart val
 - Create: `frontend/src/components/ParticipantPicker.vue`
 - Create: `frontend/src/components/ParticipantBar.vue`
 
-- [ ] **Step 1: Create frontend/src/components/ParticipantPicker.vue**
+- [x] **Step 1: Create frontend/src/components/ParticipantPicker.vue**
 
 ```vue
 <template>
@@ -3864,7 +3864,7 @@ watch(() => props.currentAssignees, (v) => { selected.value = [...v] }, { immedi
 </script>
 ```
 
-- [ ] **Step 2: Create frontend/src/components/ParticipantBar.vue**
+- [x] **Step 2: Create frontend/src/components/ParticipantBar.vue**
 
 ```vue
 <template>
@@ -3919,7 +3919,7 @@ function cancelLongPress() {
 </script>
 ```
 
-- [ ] **Step 3: Create frontend/src/components/ReceiptItemRow.vue**
+- [x] **Step 3: Create frontend/src/components/ReceiptItemRow.vue**
 
 ```vue
 <template>
@@ -3979,7 +3979,7 @@ const itemTotal = computed(() => Number(props.item.price) * props.item.quantity)
 </script>
 ```
 
-- [ ] **Step 4: Create frontend/src/views/ScanReceipt.vue**
+- [x] **Step 4: Create frontend/src/views/ScanReceipt.vue**
 
 ```vue
 <template>
@@ -4204,7 +4204,7 @@ onMounted(async () => {
 </script>
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/views/ScanReceipt.vue frontend/src/components/ReceiptItemRow.vue frontend/src/components/ParticipantPicker.vue frontend/src/components/ParticipantBar.vue
@@ -4218,7 +4218,7 @@ git commit -m "feat: ScanReceipt view with camera, OCR, all-in-one assignment, b
 **Files:**
 - Create: `frontend/src/views/GroupSettings.vue`
 
-- [ ] **Step 1: Create frontend/src/views/GroupSettings.vue**
+- [x] **Step 1: Create frontend/src/views/GroupSettings.vue**
 
 ```vue
 <template>
@@ -4361,7 +4361,7 @@ onMounted(async () => {
 </script>
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/views/GroupSettings.vue
@@ -4379,7 +4379,7 @@ git commit -m "feat: GroupSettings view with members, invite link, archive"
 - Create: `docker-compose.yml`
 - Modify: `backend/app/main.py` — serve frontend static files in production
 
-- [ ] **Step 1: Create backend/Dockerfile**
+- [x] **Step 1: Create backend/Dockerfile**
 
 ```dockerfile
 FROM python:3.11-slim
@@ -4394,7 +4394,7 @@ COPY . .
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-- [ ] **Step 2: Create docker-compose.yml**
+- [x] **Step 2: Create docker-compose.yml**
 
 ```yaml
 version: "3.8"
@@ -4423,7 +4423,7 @@ volumes:
   pgdata:
 ```
 
-- [ ] **Step 3: Add static file serving to backend/app/main.py**
+- [x] **Step 3: Add static file serving to backend/app/main.py**
 
 Add at the end of `main.py`, after all router includes:
 
@@ -4438,7 +4438,7 @@ if frontend_dist.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/Dockerfile docker-compose.yml backend/app/main.py
@@ -4449,25 +4449,25 @@ git commit -m "feat: Docker setup with PostgreSQL and production static file ser
 
 ### Task 21: Final Integration Verification
 
-- [ ] **Step 1: Start backend and database**
+- [x] **Step 1: Start backend and database**
 
 Run: `docker-compose up -d db && cd backend && alembic upgrade head && uvicorn app.main:app --reload --port 8000`
 
-- [ ] **Step 2: Start frontend dev server**
+- [x] **Step 2: Start frontend dev server**
 
 Run: `cd frontend && npm run dev`
 
-- [ ] **Step 3: Run all backend tests**
+- [x] **Step 3: Run all backend tests**
 
 Run: `cd backend && python -m pytest tests/ -v`
 Expected: All tests pass.
 
-- [ ] **Step 4: Build frontend for production**
+- [x] **Step 4: Build frontend for production**
 
 Run: `cd frontend && npm run build`
 Expected: `dist/` directory created successfully.
 
-- [ ] **Step 5: Commit any remaining changes**
+- [x] **Step 5: Commit any remaining changes**
 
 ```bash
 git add -A
@@ -4482,7 +4482,7 @@ git commit -m "chore: final integration verification"
 - Create: `backend/app/services/storage.py`
 - Modify: `backend/app/api/receipts.py` — save to R2 before scanning
 
-- [ ] **Step 1: Create backend/app/services/storage.py**
+- [x] **Step 1: Create backend/app/services/storage.py**
 
 ```python
 import uuid
@@ -4521,7 +4521,7 @@ def upload_receipt_image(image_bytes: bytes, content_type: str) -> str:
     return f"{settings.r2_endpoint}/{settings.r2_bucket}/{key}"
 ```
 
-- [ ] **Step 2: Update backend/app/api/receipts.py — save to R2**
+- [x] **Step 2: Update backend/app/api/receipts.py — save to R2**
 
 Add import and update the endpoint:
 
@@ -4571,7 +4571,7 @@ class ReceiptScanResponse(BaseModel):
     image_url: str | None = None
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/app/services/storage.py backend/app/api/receipts.py backend/app/schemas/receipt.py
@@ -4586,7 +4586,7 @@ git commit -m "feat: Cloudflare R2 upload for receipt images"
 - Create: `backend/app/services/telegram_bot.py`
 - Modify: `backend/app/api/settlements.py` — add remind endpoint
 
-- [ ] **Step 1: Add python-telegram-bot to requirements.txt**
+- [x] **Step 1: Add python-telegram-bot to requirements.txt**
 
 Append to `backend/requirements.txt`:
 
@@ -4596,7 +4596,7 @@ python-telegram-bot==21.12
 
 Run: `cd backend && pip install python-telegram-bot==21.12`
 
-- [ ] **Step 2: Create backend/app/services/telegram_bot.py**
+- [x] **Step 2: Create backend/app/services/telegram_bot.py**
 
 ```python
 from telegram import Bot
@@ -4656,7 +4656,7 @@ async def send_expense_notification(
     return await send_notification(telegram_id, message)
 ```
 
-- [ ] **Step 3: Add remind endpoint to backend/app/api/settlements.py**
+- [x] **Step 3: Add remind endpoint to backend/app/api/settlements.py**
 
 Add this endpoint after `update_settlement`:
 
@@ -4701,7 +4701,7 @@ async def remind_settlement(
     return {"status": "sent"}
 ```
 
-- [ ] **Step 4: Wire remind button in frontend — update SettlementCard.vue emit handler**
+- [x] **Step 4: Wire remind button in frontend — update SettlementCard.vue emit handler**
 
 In `frontend/src/views/TripDetail.vue`, add the remind handler:
 
@@ -4730,7 +4730,7 @@ And in the template, bind the emit:
 />
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/requirements.txt backend/app/services/telegram_bot.py backend/app/api/settlements.py frontend/src/views/TripDetail.vue
@@ -4744,7 +4744,7 @@ git commit -m "feat: Telegram bot notifications with settle reminder"
 **Files:**
 - Modify: `backend/app/api/expenses.py`
 
-- [ ] **Step 1: Add PATCH endpoint to backend/app/api/expenses.py**
+- [x] **Step 1: Add PATCH endpoint to backend/app/api/expenses.py**
 
 Add after `get_expense`:
 
@@ -4824,9 +4824,35 @@ async def update_expense(
     return result.scalar_one()
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add backend/app/api/expenses.py
 git commit -m "feat: PATCH expense endpoint for editing existing expenses"
 ```
+
+---
+
+## Post-MVP Status
+
+All 24 tasks from the original implementation plan have been completed. The app is fully functional as a Telegram Mini App.
+
+### Additional features added beyond the original plan
+
+- **i18n (RU/EN)** — lightweight `useI18n` composable with auto-detection from Telegram `language_code`
+- **Settlement undo** — "Undo" button resets a settlement back to unpaid state
+- **Virtual member handling** — "Remind" button shows alert when debtor has no Telegram linked; join flow allows linking to existing virtual member
+- **Expense detail view** — dedicated screen showing expense info, items, distribution, with edit/delete actions
+- **Receipt discount support** — discount line items proportionally distributed across assigned shares
+- **Receipt total vs items total comparison** — shown when discount is present
+- **Tap-to-assign with multi-select** — simplified from the original popup/brush design; select multiple items then tap a participant to assign
+- **Cache-busting for Telegram WebView** — ensures fresh content loads in Telegram's embedded browser
+- **Group deletion** — owner can permanently delete a group
+- **Invite preview** — authenticated users can preview group details before joining
+
+### Known limitations
+
+- **SQLite** — no concurrent write support; sufficient for current user base but needs migration to PostgreSQL for production scale
+- **No Docker** — deployment uses cloudflared tunnel for dev/staging
+- **Currency API** — uses open.er-api.com (free, no key); may hit rate limits under heavy load
+- **No expense notifications** — "new expense added" notifications not yet implemented (only settlement reminders work)
