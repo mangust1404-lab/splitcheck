@@ -85,7 +85,7 @@ const { t } = useI18n()
 
 const name = ref('')
 const currency = ref('KZT')
-const members = ref([auth.user?.display_name || ''])
+const members = ref([''])
 const saving = ref(false)
 
 async function submit() {
@@ -93,6 +93,7 @@ async function submit() {
   try {
     const group = await createGroup({ name: name.value, base_currency: currency.value })
 
+    // Skip empty names; creator is already added by backend
     const validMembers = members.value.filter((m) => m.trim())
     for (const memberName of validMembers) {
       await addMember(group.id, memberName.trim())
