@@ -4,9 +4,9 @@
 
 **Goal:** Build a Telegram Mini App for splitting group expenses with LLM-powered receipt scanning.
 
-**Architecture:** Monorepo with `backend/` (FastAPI + async SQLAlchemy + SQLite) and `frontend/` (Vue 3 + Vite + Tailwind). Receipt OCR via Claude Vision API. Telegram Web App SDK for auth and notifications.
+**Architecture:** Monorepo with `backend/` (FastAPI + async SQLAlchemy + PostgreSQL) and `frontend/` (Vue 3 + Vite + Tailwind). Receipt OCR via Claude Vision API. Telegram Web App SDK for auth and notifications. Deployed on Render (free tier) with auto-deploy from `master`.
 
-**Tech Stack:** Python 3.11, FastAPI, SQLAlchemy 2.0 (async), Alembic, SQLite (aiosqlite), Vue.js 3, Vite, Tailwind CSS, Pinia, Vue Router, Telegram Web App SDK, Anthropic Python SDK.
+**Tech Stack:** Python 3.11, FastAPI, SQLAlchemy 2.0 (async), Alembic, PostgreSQL (asyncpg), Vue.js 3, Vite, Tailwind CSS, Pinia, Vue Router, Telegram Web App SDK, Anthropic Python SDK.
 
 ---
 
@@ -4372,78 +4372,100 @@ git commit -m "feat: GroupSettings view with members, invite link, archive"
 
 ## Phase 6: Deployment
 
-### Task 20: Docker Setup
+### Task 20: Docker & Render Deployment Setup
 
-**Files:**
-- Create: `backend/Dockerfile`
-- Create: `docker-compose.yml`
-- Modify: `backend/app/main.py` — serve frontend static files in production
+**Статус:** Завершено. Приложение задеплоено на Render (free tier).
 
-- [x] **Step 1: Create backend/Dockerfile**
+**Итоговые файлы:**
+- `Dockerfile` (корень репозитория) — multi-stage build
+- `render.yaml` — Infrastructure-as-Code blueprint
+- `docker-compose.yml` — для локальной разработки
+- `backend/app/main.py` — static file serving для production
+
+- [x] **Step 1: Multi-stage Dockerfile (корень репозитория)**
 
 ```dockerfile
-FROM python:3.11-slim
+# Stage 1: Build frontend
+FROM node:20-slim AS frontend
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
 
+# Stage 2: Backend + built frontend
+FROM python:3.11-slim
 WORKDIR /app
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend/ .
+COPY --from=frontend /app/frontend/dist /frontend/dist
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8000
+CMD ["sh", "-c", "cd /app && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 ```
 
-- [x] **Step 2: Create docker-compose.yml**
+- [x] **Step 2: render.yaml blueprint**
 
 ```yaml
-version: "3.8"
+databases:
+  - name: splitcheck-db
+    plan: free
+    databaseName: splitcheck
+    user: splitcheck
 
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: splitcheck
-      POSTGRES_PASSWORD: splitcheck_dev
-      POSTGRES_DB: splitcheck
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    env_file: .env
-    depends_on:
-      - db
-
-volumes:
-  pgdata:
+  - type: web
+    name: splitcheck
+    plan: free
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: splitcheck-db
+          property: connectionString
+      - key: BOT_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        value: splitcheck-receipts
+      - key: CORS_ORIGINS
+        value: "https://web.telegram.org,https://telegram.org"
 ```
 
-- [x] **Step 3: Add static file serving to backend/app/main.py**
-
-Add at the end of `main.py`, after all router includes:
+- [x] **Step 3: Static file serving в backend/app/main.py**
 
 ```python
-import os
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 
-# Serve frontend in production
+# Serve frontend in production (built files copied by Dockerfile)
 frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
 ```
 
-- [x] **Step 4: Commit**
+- [x] **Step 4: Деплой на Render**
 
-```bash
-git add backend/Dockerfile docker-compose.yml backend/app/main.py
-git commit -m "feat: Docker setup with PostgreSQL and production static file serving"
-```
+Развёрнуто:
+- **URL:** https://splitcheck-miym.onrender.com
+- **Telegram бот:** https://t.me/SplitCheckanalog_bot/app
+- **GitHub:** https://github.com/mangust1404-lab/splitcheck (public)
+- **БД:** PostgreSQL `splitcheck-db` на Render (free tier)
+- **Auto-deploy:** из ветки `master`
+- **Cold start:** ~50 секунд (free tier засыпает при неактивности)
 
 ---
 
@@ -4835,7 +4857,11 @@ git commit -m "feat: PATCH expense endpoint for editing existing expenses"
 
 ## Post-MVP Status
 
-All 24 tasks from the original implementation plan have been completed. The app is fully functional as a Telegram Mini App.
+All 24 tasks from the original implementation plan have been completed. The app is fully functional as a Telegram Mini App and **задеплоена на Render** (free tier).
+
+**Production URL:** https://splitcheck-miym.onrender.com
+**Telegram бот:** https://t.me/SplitCheckanalog_bot/app
+**GitHub:** https://github.com/mangust1404-lab/splitcheck
 
 ### Additional features added beyond the original plan
 
@@ -4849,10 +4875,43 @@ All 24 tasks from the original implementation plan have been completed. The app 
 - **Cache-busting for Telegram WebView** — ensures fresh content loads in Telegram's embedded browser
 - **Group deletion** — owner can permanently delete a group
 - **Invite preview** — authenticated users can preview group details before joining
+- **Render deployment** — multi-stage Dockerfile + render.yaml blueprint, auto-deploy из `master`
+- **Миграция на PostgreSQL** — замена SQLite на managed PostgreSQL (Render)
+
+### Deployment
+
+| Компонент | Детали |
+|-----------|--------|
+| Платформа | Render (free tier) |
+| URL | https://splitcheck-miym.onrender.com |
+| БД | PostgreSQL — `splitcheck-db` на Render (free tier) |
+| Docker | Multi-stage: Node.js 20 (frontend build) + Python 3.11 (backend) |
+| IaC | `render.yaml` в корне репозитория |
+| CI/CD | Auto-deploy из ветки `master` при push |
+| Cold start | ~50 секунд (free tier засыпает после 15 мин неактивности) |
+
+Ранее использовался cloudflared tunnel для dev/staging — заменён на стабильный Render URL.
+
+**Ссылка для шеринга:** https://t.me/SplitCheckanalog_bot/app
+
+**Telegram Mini App URL — два независимых места настройки:**
+
+При смене домена/хостинга необходимо обновить URL в **двух** местах:
+
+1. **`setChatMenuButton` (Bot API)** — управляет только кнопкой меню в чате с ботом, **не** влияет на deep link `/app`.
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/setChatMenuButton" \
+     -H "Content-Type: application/json" \
+     -d '{"menu_button":{"type":"web_app","text":"SplitCheck","web_app":{"url":"https://splitcheck-miym.onrender.com"}}}'
+   ```
+
+2. **Main Mini App URL (BotFather)** — URL для deep link `t.me/SplitCheckanalog_bot/app`. Настраивается через BotFather: `/myapps` → выбрать бота → Edit Web App URL. Это отдельная настройка от `setChatMenuButton`.
+
+> **Важно:** Эти два URL независимы. Если обновить только `setChatMenuButton`, ссылка `t.me/SplitCheckanalog_bot/app` продолжит вести на старый домен.
 
 ### Known limitations
 
-- **SQLite** — no concurrent write support; sufficient for current user base but needs migration to PostgreSQL for production scale
-- **No Docker** — deployment uses cloudflared tunnel for dev/staging
+- **Cloudflare R2 не настроен** — переменные `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` не заданы в Render; сканирование чеков работает (распознавание), но изображения не сохраняются в storage
+- **Free tier Render** — 750 часов/месяц, автоматическое засыпание после 15 минут неактивности, ~50с cold start
 - **Currency API** — uses open.er-api.com (free, no key); may hit rate limits under heavy load
 - **No expense notifications** — "new expense added" notifications not yet implemented (only settlement reminders work)

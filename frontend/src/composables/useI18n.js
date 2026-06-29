@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 // Detect language from Telegram WebApp user data, default to English
 const langCode = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || 'en'
-const locale = ref(langCode === 'ru' ? 'ru' : 'en')
+const locale = ref(langCode.toLowerCase().startsWith('ru') ? 'ru' : 'en')
 
 const messages = {
   en: {

@@ -19,10 +19,10 @@ Friends on a trip (3-8 people, multiple days, many small expenses). At the end o
 |-------|-----------|
 | Frontend | Vue.js 3 + Vite + Tailwind CSS + Telegram Web App SDK |
 | Backend | FastAPI (Python) |
-| Database | SQLite (aiosqlite) |
+| Database | PostgreSQL (asyncpg) — Render managed instance |
 | Receipt OCR | Claude Vision API |
-| File Storage | Cloudflare R2 (receipt images) |
-| Deploy | cloudflared tunnel (dev); Docker planned for production |
+| File Storage | Cloudflare R2 (receipt images) — not yet configured |
+| Deploy | Render (free tier), multi-stage Dockerfile, auto-deploy from `master` |
 
 ## Core Features (MVP)
 
@@ -250,6 +250,39 @@ GET    /api/currencies/rates          — current exchange rates (cached, 1h TTL
 6. **Join Group** — invite preview (group name, members list), link to existing virtual member or join as new participant
 7. **Group Settings** — members, invite link, currency, archive/reactivate, delete group
 8. **Settlement Cards** (inline in Trip Detail) — 3-state transfer cards with pay/confirm/remind/undo actions
+
+## Deployment
+
+| Parameter | Value |
+|-----------|-------|
+| Хостинг | [Render](https://render.com) (free tier) |
+| URL приложения | https://splitcheck-miym.onrender.com |
+| Telegram бот | https://t.me/SplitCheckanalog_bot/app |
+| GitHub репозиторий | https://github.com/mangust1404-lab/splitcheck (public) |
+| База данных | PostgreSQL — `splitcheck-db` на Render (free tier) |
+| Dockerfile | Multi-stage: Node.js (сборка frontend) + Python (backend + static serving) |
+| IaC | `render.yaml` blueprint в корне репозитория |
+| Auto-deploy | Включен, из ветки `master` |
+| Cold start | ~50 секунд (free tier засыпает при неактивности) |
+
+**Telegram Mini App URL — два независимых места настройки:**
+
+При смене домена/хостинга необходимо обновить URL в **двух** местах:
+
+1. **`setChatMenuButton` (Bot API)** — кнопка меню в чате с ботом. Влияет только на кнопку внизу чата, **не** на deep link `/app`.
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/setChatMenuButton" \
+     -H "Content-Type: application/json" \
+     -d '{"menu_button":{"type":"web_app","text":"SplitCheck","web_app":{"url":"https://splitcheck-miym.onrender.com"}}}'
+   ```
+
+2. **Main Mini App URL (BotFather)** — URL для deep link `t.me/SplitCheckanalog_bot/app`. Настраивается через BotFather: `/myapps` → выбрать бота → Edit Web App URL. Без этого ссылка для шеринга `https://t.me/SplitCheckanalog_bot/app` будет вести на старый домен.
+
+> **Важно:** `setChatMenuButton` и Main Mini App URL — это разные настройки. Обновление одного не обновляет другое.
+
+**Ограничения текущего деплоя:**
+- Cloudflare R2 переменные (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`) не настроены — сканирование чеков загружает изображение только для распознавания, не сохраняет в storage
+- Free tier Render: 750 часов/месяц, автоматическое засыпание после 15 минут неактивности, cold start ~50 секунд
 
 ## Out of Scope (v2+)
 
